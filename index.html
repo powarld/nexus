@@ -803,6 +803,13 @@ function saRoot(sb,uid){
       return()=>{alive=false}}
   }}}
 }
+async function saImportExtra(sb){
+  try{const c=await sb.from('tpl').select('id',{count:'exact',head:true}).eq('coll','subjects').eq('id','sj_af_outras');if(c.error||(c.count||0)>0)return;
+    const r=await fetch('extra.json?'+Date.now());if(!r.ok)return;const rows=await r.json();if(!rows.length)return;
+    const b=busy('Importando o banco de questões…');let n=0;
+    for(let i=0;i<rows.length;i+=200){const part=rows.slice(i,i+200).map(x=>({coll:x.coll,id:x.id,data:x.data}));const u=await sb.from('tpl').upsert(part,{onConflict:'coll,id'});if(u.error){console.error(u.error);toast('Falha ao importar: '+u.error.message);b.end();return}n+=part.length;if((i/200)%5===0)toast('Importando… '+n+'/'+rows.length)}
+    b.end();toast('Banco de questões importado: '+n+' itens')}catch(e){console.error(e)}
+}
 async function saImportCourse(sb){
   try{const c=await sb.from('tpl').select('id',{count:'exact',head:true}).eq('coll','subjects');if(c.error||(c.count||0)>0)return;
     const r=await fetch('course.json?'+Date.now());if(!r.ok)return;const rows=await r.json();if(!rows.length)return;
@@ -820,7 +827,7 @@ async function saBoot(){
   let isAdmin=false;try{const r=await sb.from('admins').select('user_id').eq('user_id',user.id);isAdmin=!!(r.data&&r.data.length)}catch(e){}
   const us={me:async()=>({email:user.email,name:(user.user_metadata&&user.user_metadata.name)||'',isOwner:isAdmin}),id:async()=>user.id};
   const root=saRoot(sb,user.id);
-  if(isAdmin)setTimeout(()=>saImportCourse(sb),1500);
+  if(isAdmin)setTimeout(async()=>{await saImportCourse(sb);await saImportExtra(sb)},1500);
   return{root,dl:{save:saSave},us,sb};
 }
 
