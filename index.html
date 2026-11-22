@@ -1015,7 +1015,7 @@ ACT.restoff=async()=>{const t=today(),c=cfg();if(!(c.rest||[]).includes(t))retur
 
 /* ================= RANKING entre usuários ================= */
 V.rk=V.rk||{per:'week',docs:[],t:0};
-function regQs(){const o=[];(S.sessions||[]).forEach(x=>(x.log||[]).forEach(l=>{const n=Math.max(0,Math.round(+l.qf||0));if(!n||l.qf===''||l.qf==null)return;const a=Math.min(n,Math.max(0,Math.round(+l.qa||0)));const d=x.date||x.id;for(let i=0;i<n;i++)o.push({id:'_rg',_reg:1,marked:'C',gab:i<a?'C':'E',subjectId:l.sj&&l.sj!=='geral'?l.sj:'',topicId:l.tp||'',date:d})}));return o}
+function regQs(){const o=[];const add=(n,a,sj,tp,d)=>{n=Math.max(0,Math.round(+n||0));a=Math.min(n,Math.max(0,Math.round(+a||0)));for(let i=0;i<n;i++)o.push({id:'_rg',_reg:1,marked:'C',gab:i<a?'C':'E',subjectId:sj&&sj!=='geral'?sj:'',topicId:tp||'',date:d})};(S.sessions||[]).forEach(x=>{const d=x.date||x.id;(x.log||[]).forEach(l=>{if(l.qf===''||l.qf==null)return;add(l.qf,l.qa,l.sj,l.tp,d)});(x.xq||[]).forEach(e=>add(e.n,e.ok,e.sj,e.tp,d))});return o}
 function qAns(){return S.questions.filter(q=>q.marked&&q.marked!=='__nao').concat(regQs())}
 function rkStats(){
   const t=today(),w0=addDays(t,-6),ans=qAns(),wk=ans.filter(q=>(q.date||'')>=w0);
