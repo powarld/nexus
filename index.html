@@ -378,7 +378,16 @@ const CURSOS=true;
 let ADMIN=false,RDB=null;const TPLC=['subjects','topics','concursos','notes','summaries','materials','cards','decks','questions','maps','mapimgs','lulu'],TPL={},OWN={};
 const cursoAct=()=>CURSOS?(ADMIN?'c_pmdf':(cfg().cursoAtivo||'')):'';
 const tplOn=()=>CURSOS&&!ADMIN&&cursoAct()==='c_pmdf';
-function mergeTpl(c){const own=OWN[c]||[];if(!(tplOn()||(CURSOS&&!ADMIN&&['questions'].includes(c))))return own.filter(x=>!x._del);const ids=new Set(own.map(x=>x.id));return own.filter(x=>!x._del).concat((TPL[c]||[]).filter(x=>!ids.has(x.id)).map(x=>Object.assign({},x,{_tpl:1})))}
+const TPLAL={'lingua portuguesa':'portugues','raciocinio logico':'matematica e raciocinio logico','matematica':'matematica e raciocinio logico','direito processual penal militar':'direito processual penal militar'};
+function tplKey(n){const k=String(n||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();return TPLAL[k]||k}
+function tplMatch(){const a=cursoAct();if(!a||a==='c_pmdf')return null;const own=(OWN.subjects||[]).filter(x=>!x._del&&csVis(x)),m={};(TPL.subjects||[]).forEach(t=>{const o=own.find(x=>tplKey(x.name)===tplKey(t.name));if(o)m[t.id]=o.id});return Object.keys(m).length?m:null}
+function mergeTpl(c){const own=OWN[c]||[];
+  if(!tplOn()&&CURSOS&&!ADMIN&&['topics','summaries','maps','questions'].includes(c)){const mt=tplMatch();if(mt){const ids=new Set(own.map(x=>x.id));let add;
+    if(c==='maps'){const sm=new Set((TPL.summaries||[]).filter(x=>mt[x.subjectId]).map(x=>'summaries:'+x.id));add=(TPL.maps||[]).filter(x=>sm.has(x.srcId))}
+    else add=(TPL[c]||[]).filter(x=>mt[x.subjectId]).map(x=>Object.assign({},x,{subjectId:mt[x.subjectId]}));
+    if(c==='questions'){const rest=(TPL.questions||[]).filter(x=>!mt[x.subjectId]);add=add.concat(rest)}
+    return own.filter(x=>!x._del).concat(add.filter(x=>!ids.has(x.id)).map(x=>Object.assign({},x,{_tpl:1})))}}
+if(!(tplOn()||(CURSOS&&!ADMIN&&['questions'].includes(c))))return own.filter(x=>!x._del);const ids=new Set(own.map(x=>x.id));return own.filter(x=>!x._del).concat((TPL[c]||[]).filter(x=>!ids.has(x.id)).map(x=>Object.assign({},x,{_tpl:1})))}
 function csVis(s){const a=cursoAct();if(!a)return true;const ci=s.concursoIds||[];return ci.length?ci.includes(a):a==='c_pmdf'}
 function applyCol(c){S[c]=(CURSOS&&!ADMIN&&TPLC.includes(c))?mergeTpl(c):(OWN[c]||[]);if(CURSOS&&!ADMIN&&cursoAct()){if(c==='subjects'){S[c]=S[c].filter(csVis);if(TPLC.includes('topics'))applyCol('topics')}else if(c==='topics'){const ok=new Set(mergeTpl('subjects').filter(csVis).map(x=>x.id));S[c]=S[c].filter(t=>!t.subjectId||ok.has(t.subjectId))}}if(c==='subjects')S.subjects=by(S.subjects,'createdAt');if(c==='summaries')mergeVols()}
 const subjsAct=()=>{const c=cursoAct();return c?S.subjects.filter(s=>(s.concursoIds||[]).includes(c)):S.subjects};
