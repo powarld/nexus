@@ -989,7 +989,7 @@ function restAuto(){const k=hrMinDate();if(V.autoK===k||!V.loaded.settings||!V.l
   let d=c.restauto,rest=(c.rest||[]).slice(),fail=(c.fail||[]).slice(),sh=Object.assign({},c.restsh||{}),ch=0,g=0;
   const wr=x=>rest.find(r=>weekStart(r)===weekStart(x));
   while(d<k&&g++<120){const st=S.sessions.some(x=>x.date===d&&(x.minutes||0)>0);
-    if(!st&&!rest.includes(d)&&!fail.includes(d)){if(wr(d)){fail.push(d)}else{rest.push(d);sh[d]=schedShift(1)}ch=1}
+    if(!st&&!rest.includes(d)&&!fail.includes(d)){if(wr(d)){fail.push(d);schedShift(1)}else{rest.push(d);sh[d]=schedShift(1)}ch=1}
     d=addDays(d,1)}
   if(ch||d!==c.restauto)put('settings','main',Object.assign({},strip(c),{rest,fail,restsh:sh,restauto:d}))}
 setTimeout(()=>{try{schedRoll();restAuto()}catch(e){}},4000);setInterval(()=>{try{schedRoll();restAuto()}catch(e){}},30000);
