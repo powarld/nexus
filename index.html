@@ -742,7 +742,16 @@ ACT.goto=b=>{V.stack=[];go(b.dataset.v,JSON.parse(b.dataset.p||'{}'),false)};
 ACT.back=()=>goBack();
 ACT.open=b=>openRecord(b.dataset.c,b.dataset.id);
 ACT.new=b=>(CURSOS&&!ADMIN&&b.dataset.c==='errnotes')?errForm(null,JSON.parse(b.dataset.d||'null')):openForm(b.dataset.c,null,JSON.parse(b.dataset.d||'null'));
-ACT.edit=b=>(CURSOS&&!ADMIN&&b.dataset.c==='errnotes')?errForm(get('errnotes',b.dataset.id)):openForm(b.dataset.c,get(b.dataset.c,b.dataset.id));
+ACT.edit=b=>{const c=b.dataset.c;if(c==='summaries'){const d=get('summaries',b.dataset.id);if(d&&!d._vols&&!d._tpl)return wordEdit(d)}return (CURSOS&&!ADMIN&&c==='errnotes')?errForm(get('errnotes',b.dataset.id)):openForm(c,get(c,b.dataset.id))};
+function wordEdit(d){
+  const tb=(c,l,x)=>`<button type="button" class="btn sm ${x||''}" data-wc="${c}">${l}</button>`;
+  const bar=tb('undo','↶ Desfazer')+tb('redo','↷ Refazer')+tb('title','Título','pri')+tb('h3','Subtítulo')+tb('para','Texto normal')+tb('bold','<b>N</b>')+tb('italic','<i>I</i>')+tb('mark','Destaque')+tb('insertUnorderedList','• Lista')+tb('insertOrderedList','1. 2. 3.')+tb('indent','Recuar')+tb('outdent','Avançar')+tb('table','Tabela','pri')+tb('addrow','+ Linha')+tb('addcol','+ Coluna')+tb('deltable','Excluir tabela');
+  sheet('Editar resumo',`<label>Título</label><input name="title" required maxlength="200" value="${esc(d.title||'')}"><div class="wysw" style="margin-top:10px"><div class="row" style="gap:6px;margin:4px 0;flex-wrap:wrap;position:sticky;top:0;z-index:3;background:var(--surface,var(--bg));padding:6px 0">${bar}</div><div id="wsed" class="wys md" data-wsm="1" contenteditable="true" style="min-height:55vh;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);outline:none">${md(mdFix(d.md||''))}</div></div><div style="margin-top:8px"><button type="button" class="btn sm" data-act="editmeta" data-id="${d.id}">Editar disciplina, assunto e formato</button></div>`,async o=>{
+    const ed=$('#wsed'),nm=h2m(ed),title=String(o.title||'').trim();if(!title){toast('Informe o título');return false}
+    const body=Object.assign({},strip(d),{title,md:nm,updatedAt:Date.now()});
+    if(nm!==(d.md||''))body.hist=[{t:Date.now(),md:d.md||''}].concat(d.hist||[]).slice(0,8);
+    await put('summaries',d.id,body);toast('Resumo salvo')},{wide:true,nofocus:true,save:'Salvar'})}
+ACT.editmeta=b=>{const d=get('summaries',b.dataset.id);if(d)openForm('summaries',d)};
 ACT.delrec=b=>confirmDel('Excluir este item? Esta ação não pode ser desfeita.',async()=>{await cascade(b.dataset.c,b.dataset.id);if(V.p.id===b.dataset.id)goBack()});
 ACT.wikilink=b=>{const t=norm(b.dataset.t);const it=allItems().find(x=>['notes','summaries','materials'].includes(x.c)&&norm(x.title)===t);if(it)openRecord(it.c,it.id);else toast('Nenhum registro com o título "'+b.dataset.t+'"')};
 
@@ -1062,7 +1071,7 @@ function kbView(c,d){
   return hd+rdBar(c,d)+`
   <div class="row" style="gap:8px;margin-bottom:10px"><button class="btn sm pri" data-act="edit" ${a}>Editar</button>${hlBtn(c,d)}${isMat?'':'<button class="btn sm" data-act="fnd">Buscar</button>'}${nm?`<button class="btn sm" data-act="mmfrom" ${a}>Mapas mentais (${nm})</button>`:''}</div>
   <details style="margin-bottom:10px"><summary class="tiny muted" style="cursor:pointer;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:6px 0">Mais ações</summary><div class="row" style="gap:8px;margin-top:6px">${more}</div></details>
-  <details class="card" style="margin-bottom:14px;padding:10px 14px"><summary style="cursor:pointer;font-weight:700;font-family:var(--f-display)">Assistente de IA</summary><div class="row" style="gap:8px;margin-top:10px">${ai}</div></details>
+  
   ${body}
   <div class="sec"><h2>Relações</h2>${rel.out.length||rel.back.length?`<div class="grid">${rel.out.length?`<div class="card"><h3 style="font-size:14px;margin-bottom:8px">Vinculado a</h3><div class="list">${rel.out.map(r=>`<div class="item"><button class="t chip" style="border:0;background:none;text-align:left;font-size:14px" data-act="open" data-c="${r.c}" data-id="${r.id}">${esc(TL[r.c])}: ${esc(r.title)}</button><button class="btn sm ghost" data-act="unlink" data-c="${c}" data-id="${d.id}" data-k="${r.c}:${r.id}" aria-label="Remover vínculo">×</button></div>`).join('')}</div></div>`:''}${rel.back.length?`<div class="card"><h3 style="font-size:14px;margin-bottom:8px">Citado em (backlinks)</h3><div class="list">${rel.back.map(r=>`<button class="item" data-act="open" data-c="${r.c}" data-id="${r.id}"><span class="t">${esc(TL[r.c])}: ${esc(r.title)}</span></button>`).join('')}</div></div>`:''}</div>`:'<div class="tiny muted">Sem relações. Use Relacionar ou escreva [[Título]] no texto.</div>'}</div>`;
 }
@@ -2028,6 +2037,7 @@ ACT.ldel=b=>confirmDel('Excluir este card?',async()=>{await del('cards',b.datase
 /* editor visual (tipo Word) para o verso do flashcard: edita o texto formatado; salva como markdown */
 function h2m(root){
   const W=(n)=>{let o='';n.childNodes.forEach(c=>{o+=N(c)});return o};
+  const LI=(ul,pre)=>{let i=0,o='';const ord=ul.tagName.toLowerCase()==='ol';ul.childNodes.forEach(c=>{if(c.tagName&&c.tagName.toLowerCase()==='li'){i++;const mk=ord?i+'. ':'- ';let txt='',sub='';c.childNodes.forEach(ch=>{if(ch.nodeType===1&&/^(ul|ol)$/i.test(ch.tagName))sub+=LI(ch,pre+' '.repeat(mk.length));else txt+=N(ch)});o+=pre+mk+txt.trim().replace(/\n+/g,' ')+'\n'+sub}});return o};
   const N=(n)=>{if(n.nodeType===3)return n.nodeValue.replace(/ /g,' ');if(n.nodeType!==1)return'';
     const t=n.tagName.toLowerCase(),k=W(n);
     if(t==='br')return'\n';
@@ -2037,7 +2047,12 @@ function h2m(root){
     if(t==='code')return '`'+k+'`';
     if(t==='a'&&n.classList.contains('wl'))return '[['+n.textContent+']]';
     if(/^h[1-6]$/.test(t))return '\n\n'+'#'.repeat(+t[1])+' '+k.trim()+'\n\n';
-    if(t==='ul'||t==='ol'){let i=0,o='\n';n.childNodes.forEach(c=>{if(c.tagName&&c.tagName.toLowerCase()==='li'){i++;o+=(t==='ol'?i+'. ':'- ')+W(c).trim().replace(/\n+/g,' ')+'\n'}});return o+'\n'}
+    if(t==='ul'||t==='ol')return '\n'+LI(n,'')+'\n';
+    if(t==='pre')return '\n\n```\n'+n.textContent.replace(/\n$/,'')+'\n```\n\n';
+    if(t==='hr')return '\n\n---\n\n';
+    if(t==='del'||t==='s')return k.trim()?'~~'+k.trim()+'~~':'';
+    if(t==='a'&&n.getAttribute('href')&&n.getAttribute('href')!=='#'&&!n.classList.contains('wl'))return '['+k+']('+n.getAttribute('href')+')';
+    if(t==='div'&&n.classList.contains('callout')){const ty=([].slice.call(n.classList).find(x=>/^c-/.test(x))||'c-note').slice(2),ct=n.querySelector(':scope>.ct'),cb=n.querySelector(':scope>.cb'),tt=ct?W(ct).replace(/\n+/g,' ').trim():'',bd=cb?W(cb).replace(/\n{3,}/g,'\n\n').trim():'';return '\n\n> [!'+ty+'] '+tt+'\n'+(bd?bd.split('\n').map(l=>'> '+l).join('\n'):'')+'\n\n'}
     if(t==='blockquote')return '\n\n'+k.trim().split('\n').map(l=>'> '+l).join('\n')+'\n\n';
     if(t==='table'){const rows=[...n.querySelectorAll('tr')].map(tr=>[...tr.children].map(c=>(W(c).replace(/\n+/g,' ').replace(/\|/g,'/').trim()||' ')));if(!rows.length)return '';const w=Math.max(...rows.map(r=>r.length));rows.forEach(r=>{while(r.length<w)r.push(' ')});const L=r=>'| '+r.join(' | ')+' |';return '\n\n'+L(rows[0])+'\n|'+' --- |'.repeat(w)+'\n'+rows.slice(1).map(L).join('\n')+'\n\n'}
     if(t==='p'||t==='div')return '\n'+k+'\n';
@@ -2754,11 +2769,12 @@ const cadId=sid=>'cad_'+sid;
 function cadText(sid){const d=get('errnotes',cadId(sid));if(d)return d.text||'';const old=(S.errnotes||[]).filter(e=>e.subjectId===sid&&e.kind!=='caderno');return old.map(e=>'## '+(e.title||'')+'\n\n'+(e.text||'')).join('\n\n')}
 let _cadT=null;
 function CADX(c,ed){
-  if(c==='mark'&&ed.dataset.cad){const sl=window.getSelection();if(!sl||!sl.rangeCount||sl.isCollapsed||!ed.contains(sl.anchorNode)){toast('Selecione o texto para destacar');return true}
+  if(c==='mark'&&(ed.dataset.cad||ed.dataset.wsm)){const sl=window.getSelection();if(!sl||!sl.rangeCount||sl.isCollapsed||!ed.contains(sl.anchorNode)){toast('Selecione o texto para destacar');return true}
     const rg=sl.getRangeAt(0),an=rg.commonAncestorContainer,ae=an.nodeType===1?an:an.parentElement,mk=ae&&ae.closest&&ae.closest('mark');
     if(mk&&ed.contains(mk)){const p=mk.parentNode;while(mk.firstChild)p.insertBefore(mk.firstChild,mk);mk.remove();p.normalize();return true}
     const fr=rg.extractContents();fr.querySelectorAll&&fr.querySelectorAll('mark').forEach(m=>{while(m.firstChild)m.parentNode.insertBefore(m.firstChild,m);m.remove()});
     const m=document.createElement('mark');m.appendChild(fr);rg.insertNode(m);const r2=document.createRange();r2.selectNodeContents(m);sl.removeAllRanges();sl.addRange(r2);return true}
+  if(c==='h3'||c==='para'){document.execCommand('formatBlock',false,c==='h3'?'h3':'p');return true}
   if(!['title','table','addrow','addcol','deltable'].includes(c))return false;
   const sel=window.getSelection();if(!sel||!sel.rangeCount)return true;
   const n=sel.anchorNode,el=n&&(n.nodeType===1?n:n.parentElement),cell=el&&el.closest&&el.closest('td,th'),tb=el&&el.closest&&el.closest('table');
