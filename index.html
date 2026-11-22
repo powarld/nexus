@@ -841,7 +841,6 @@ async function saImportSync(sb,uid,em){
     const j=JSON.parse(new TextDecoder().decode(u8));const rows=(j.rows||[]).filter(x=>x&&/^\d{4}-\d\d-\d\d$/.test(x.date)).map(x=>({user_id:uid,coll:'d/sessions',id:x.date,data:x,updated_at:new Date().toISOString()}));
     if(!rows.length){toast('Nada para importar');return}
     if(!j.em||String(j.em).toLowerCase()!==String(em||'').toLowerCase()){alert('Este envio é para a conta '+(j.em||'(não informada)')+', mas você está logado(a) como '+(em||'outra conta')+'. Nada foi importado. Saia, entre com a conta certa e abra o link de novo.');return}
-    if(!confirm('Importar '+rows.length+' dias de estudo do app para a conta '+(em||'atual')+'? Os dias enviados substituem os do site.'))return;
     const b=busy('Importando estudos do app…');
     for(let i=0;i<rows.length;i+=100){const r=await sb.from('docs').upsert(rows.slice(i,i+100),{onConflict:'user_id,coll,id'});if(r.error){b.end();toast('Falha ao importar: '+r.error.message);return}}
     b.end();toast('Importado: '+rows.length+' dias. Recarregando…');setTimeout(()=>location.reload(),900)
