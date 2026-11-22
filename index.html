@@ -341,7 +341,7 @@ async function pfAccount(us,real){
     if(!p||!p.name){const r=await pfRegister({name:'Usuário de teste',email:''});p={name:r.name,email:'',test:true,createdAt:new Date().toISOString()};try{await PFREF.set(p)}catch(e){}}
     PFNAME=p.name;window.__test=1;return n=>real.collection(base+n)}
   const em=String((me&&me.email)||'').toLowerCase();
-  if(CURSOS&&me&&me.isOwner&&uid){ADMIN=true;PFID='admin';PFNAME='Administrador';const ab='data/users/'+uid+'/d/';return n=>TPLC.includes(n)?real.collection('pmdf_'+n):real.collection(ab+n)}
+  if(CURSOS&&me&&me.isOwner&&uid){ADMIN=true;PFID='admin';PFNAME='João Mateus - Adm';const ab='data/users/'+uid+'/d/';return n=>TPLC.includes(n)?real.collection('pmdf_'+n):real.collection(ab+n)}
   if(!uid)return false;
   PFID='u_'+String(uid).slice(-8);
   const base='data/users/'+uid+'/d/';PFREF=real.collection(base+'prof').doc('me');
