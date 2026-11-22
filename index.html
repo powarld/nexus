@@ -2346,7 +2346,12 @@ function cicloGen(c){
 const cicloWk=()=>{const d=new Date(today()+'T12:00:00'),k=(d.getDay()+6)%7;return addDays(today(),-k)};
 const cicloH=m=>{m=Math.round(m);const h=Math.floor(m/60),r=m%60;return h?(r?h+'h'+String(r).padStart(2,'0'):h+'h'):r+'min'};
 function cicloWeek(sid,c){const a=cicloWk(),b=addDays(a,6);let done=0;S.sessions.forEach(x=>{if(x.date>=a&&x.date<=b)done+=((x.by||{})[sid]||0)});const pl=(c.hrs||{})[sid];return{plan:pl==null?1:pl,done}}
-function cicloPlan(ss,c){
+const cpMin=c=>V.cicloPlanMin==null?!!(c.seq&&c.seq.length):V.cicloPlanMin;
+function cicloPlan(ss,c){const full=cicloPlan0(ss,c),mn=cpMin(c),T='Planejamento de horas por matéria',bt=`<button class="btn sm" data-act="cicloPlanMin">${mn?'Expandir':'Minimizar'}</button>`;
+  if(!mn)return full.replace('<b>'+T+'</b>','<div class="row"><b class="grow">'+T+'</b>'+bt+'</div>');
+  const m=full.match(/<span>TOTAL<\/span><span>(.*?)<\/span>/);
+  return `<div class="card" style="padding:12px;margin:10px 0"><div class="row"><b class="grow">${T}</b>${bt}</div><div class="tiny muted" style="margin-top:6px">${m?m[1]:''}</div></div>`}
+function cicloPlan0(ss,c){
   const R=ss.map(x=>({x,w:cicloWeek(x.id,c)})),tp=R.reduce((n,r)=>n+r.w.plan*60,0),td=R.reduce((n,r)=>n+r.w.done,0);
   const rows=R.map(r=>{const pm=r.w.plan*60,rest=Math.max(0,pm-r.w.done),pc=pm?Math.min(100,Math.round(r.w.done/pm*100)):100;
     return `<div style="display:grid;grid-template-columns:1fr 64px;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--line,#ffffff22)"><div><b>${esc(r.x.name)}${r.x.finalizada?' ':''}</b><div class="tiny muted" style="margin-top:2px">feitas ${cicloH(r.w.done)} · restam ${cicloH(rest)}</div><div style="height:6px;border-radius:4px;background:#8884;margin-top:6px;overflow:hidden"><div style="height:100%;width:${pc}%;background:${rest?'var(--accent)':'#2ea44f'}"></div></div></div><div><input type="number" min="0" max="40" step="0.5" value="${r.w.plan}" data-hrs="${r.x.id}" inputmode="decimal" style="width:100%;text-align:center" aria-label="Horas por semana"><div class="tiny muted" style="text-align:center">h/sem</div></div></div>`}).join('');
@@ -2357,10 +2362,11 @@ document.addEventListener('change',e=>{const el=e.target;if(el&&el.dataset&&el.d
 ACT.cicloReg=b=>{const c=cicloDoc();let m=cicloSess(c);if(b&&b.dataset&&b.dataset.id){T.subj=b.dataset.id;const k=(c.seq||[]).findIndex((x,i)=>x===b.dataset.id&&!(c.sdone||[])[i]);if(k>=0&&c.smin&&c.smin[k])m=c.smin[k]}regSheet(m)};
 const cicloSave=async d=>{await put('metas','ciclo',Object.assign({kind:'ciclo'},cicloDoc(),d));render()};
 ACT.cicloEd=()=>{V.cicloEd=!V.cicloEd;render()};
+ACT.cicloPlanMin=()=>{V.cicloPlanMin=!cpMin(cicloDoc());render()};
 ACT.cicloSel=async b=>{const all=cicloAll().map(x=>x.id),cur=cicloSubs().map(x=>x.id),id=b.dataset.id,n=cur.includes(id)?cur.filter(x=>x!==id):all.filter(x=>cur.includes(x)||x===id);await cicloSave({sel:n,done:{},seq:[],sdone:[]})};
 ACT.cicloTodas=async()=>{await cicloSave({sel:cicloAll().map(x=>x.id),done:{},seq:[],sdone:[]})};
 ACT.cicloGo=b=>go('study',{topic:b.dataset.id});
-ACT.cicloGer=async()=>{const c=cicloDoc(),ch=cicloSeqBuild(c),seq=ch.seq;
+ACT.cicloGer=async()=>{V.cicloEd=false;V.cicloPlanMin=true;const c=cicloDoc(),ch=cicloSeqBuild(c),seq=ch.seq;
   if(!seq.length){toast('Defina horas por semana nas matérias');return}
   V.cicloSi=-1;await cicloSave({seq,smin:ch.smin,sv:2,sdone:seq.map(()=>false)});toast('Ciclo gerado: '+seq.length+' sessões')};
 ACT.cicloSessB=async()=>{const c=cicloDoc(),o=[30,45,60,90],v=o[(o.indexOf(cicloSess(c))+1)%o.length];await cicloSave({sess:v,seq:[],smin:[],sdone:[]});toast('Sessão de '+cicloH(v)+'. Gere o ciclo de novo.')};
