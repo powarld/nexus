@@ -823,6 +823,14 @@ async function saBoot(){
   return{root,dl:{save:saSave},us,sb};
 }
 
+/* ---- standalone: sem IA ---- */
+(function(){
+  const A=['mbasics','mscanai','mexpect','minc','mseedai','mhelp','mprereq','mrevexp','mrevai','msum','mcards','mmorg','mmgapai','mmlooseai','mmtblai','mmask','sem','mchatsend','qask','qfc','m4gen','mmgen','lulure','mmsplitgo','mmmkhub','qmapadd','mqsrc'];
+  const st=document.createElement('style');st.textContent=A.map(a=>'[data-act="'+a+'"]').join(',')+'{display:none!important}';document.head.appendChild(st);
+  const hide=()=>document.querySelectorAll('button,.btn,.chip').forEach(b=>{if(b.dataset&&b.dataset.noai)return;const t=b.textContent||'';if(/\(IA\)|🤖|✨|com a IA|pela IA/i.test(t))b.style.display='none'});
+  new MutationObserver(hide).observe(document.documentElement,{childList:true,subtree:true});
+})();
+
 function renderNav(){
   const na=alerts().filter(x=>x.lvl!=='info').length;
   $('#side').innerHTML=`<div class="logo">NEXUS<small>Segundo cérebro</small></div><button type="button" id="sidemin" class="ico" data-act="sidemin" title="Minimizar o menu" aria-label="Minimizar o menu">«</button>`+NAV.filter(x=>!PROF.includes(x[0])&&x[0]!=='kb').map(([k,l,i])=>`<button class="nv ${V.view===k||(k==='study'&&V.view==='method')||(k==='profile'&&PROF.includes(V.view))?'on':''}" data-act="goto" data-v="${k}" data-p="{}">${ico(i)}${l}${k==='dash'&&na?`<span class="badge">${na}</span>`:''}</button>`).join('')+`<div style="height:1px;background:var(--line);margin:8px 12px"></div><button class="nv" data-act="sair"><span style="width:20px;text-align:center;flex:none">↩</span>Sair da conta</button><button class="nv" data-act="menusearch"><span style="width:20px;text-align:center;flex:none">🔎</span>Buscar em tudo</button>${TB.tabs.length<12?'<button class="nv" data-act="menutab"><span style="width:20px;text-align:center;flex:none">＋</span>Nova aba</button>':''}<button class="nv" data-act="menuwin"><span style="width:20px;text-align:center;flex:none">⧉</span>Nova janela</button><button class="nv" data-act="profsw"><span style="width:20px;text-align:center;flex:none">👤</span>${pfName()}</button>`;try{pillUpdate()}catch(e){}
@@ -1414,7 +1422,7 @@ function topicChoice(t){
   const sub=(x)=>`<div class="tiny" style="font-weight:500;margin-top:6px">${x}</div>`;
   const P=tpParts(t);return head(esc(P.t),'')+`<div class="tiny muted" style="margin:0 0 6px;letter-spacing:.1em;font-weight:700">${esc(P.eb)} · ${esc(sj.name||'')}</div>${P.sb?`<div class="muted" style="margin:0 0 16px;font-size:14px;line-height:1.45">${esc(P.sb)}</div>`:'<div style="margin-bottom:14px"></div>'}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-  <button class="btn pri" style="${big}" data-act="${sm?'rdgo':'tgsum'}" data-c="summaries" data-id="${sm?sm.id:t.id}">Resumo${sub(sm?'Ler o resumo':'Sem resumo · toque para gerar')}</button>
+  <button class="btn pri" style="${big}" data-act="${sm?'rdgo':'tgsum'}" data-c="summaries" data-id="${sm?sm.id:t.id}">Resumo${sub(sm?'Ler o resumo':'Sem resumo ainda')}</button>
   <button class="btn" style="${big}" data-act="${sm||tMapped(t.id)?'mtopic':'tmaplock'}" data-id="${t.id}">Mapeamento de tópicos${sub(sm||tMapped(t.id)?'Onde bater o olho':'🔒 Só após o resumo')}</button>
   ${!nm&&!sm?`<button class="btn" style="${big};position:relative;overflow:hidden" data-act="maplock" aria-disabled="true"><span style="opacity:.4">Mapa mental</span><div class="tiny" style="font-weight:600;margin-top:6px;opacity:.85">🔒 Só será liberado após a geração do resumo</div><svg viewBox="0 0 24 24" width="46" height="46" aria-hidden="true" style="position:absolute;right:10px;top:10px;opacity:.28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/><circle cx="12" cy="15.5" r="1.2"/></svg></button>`:`<button class="btn" style="${big}" data-act="${nm?'mmfrom':'tgmap'}" data-c="${mk.split(':')[0]}" data-id="${mk.split(':')[1]}" data-t="${t.id}">Mapa mental${sub(nm?nm+' mapa'+(nm>1?'s':''):'Sem mapa · toque para gerar')}</button>`}
   <button class="btn" style="${big}" data-act="stq" data-s="${t.subjectId}" data-t="${t.id}" ${nq?'':'disabled'}>Questões${sub(nq?nq+' questões':'Sem questões ainda')}</button></div>`;
@@ -1434,7 +1442,7 @@ function tgCtx(t,max){
   if(q)o+='\nPONTOS COBRADOS EM QUESTÕES COMENTADAS DO CURSO ('+n+' de '+qs.length+'):\n'+q;
   return {txt:o,nq:n};
 }
-ACT.tgsum=b=>{const t=get('topics',b.dataset.id);if(!t)return;if(_busy){toast('Aguarde a ação atual');return}
+ACT.tgsum=b=>{if(!(typeof S!=='undefined'&&S.summaries&&S.summaries.some(x=>x.topicId===b.dataset.id))){toast('Este resumo ainda não foi publicado');return}const t=get('topics',b.dataset.id);if(!t)return;if(_busy){toast('Aguarde a ação atual');return}
   {const ok=S.summaries.filter(x=>x.topicId===t.id&&!/_v\d+$/.test(x.id)&&!(Array.isArray(x.tags)&&x.tags.includes('gerado')));
    if(ok.length){const pdf=ok.find(x=>Array.isArray(x.tags)&&x.tags.includes('pdf'))||ok[0];go('kb',{c:'summaries',id:pdf.id,anchor:'',q:''},true);return}
    {const jb=jobs().find(x=>x.topicId===t.id&&!x.summaryId);if(jb){ACT.pjlibgo({dataset:{id:jb.id}});return}}
