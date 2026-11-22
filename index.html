@@ -119,7 +119,7 @@ button.item:hover{border-color:var(--accent)}
 .cebtn .btn{padding:14px;font-size:16px;font-weight:800}
 .cebtn .c{background:var(--ok-soft);color:var(--ok);border-color:var(--ok)} .cebtn .e{background:var(--bad-soft);color:var(--bad);border-color:var(--bad)}
 .grades{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;z-index:90;max-width:90vw}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;z-index:1100;max-width:90vw}
 
 #tabs{flex:0 0 100%;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
 #tabs .tab{flex:1 1 0;min-width:112px;display:flex;align-items:center;max-width:300px;border:1.5px solid var(--line);background:var(--surface);border-radius:10px 10px 0 0;color:var(--muted)}
@@ -425,12 +425,12 @@ function cursoChooser(first){
     if(k.startsWith('delok:')){const id=k.slice(6);
       for(const s of S.subjects.filter(x=>!x._tpl&&(x.concursoIds||[]).includes(id)))await put('subjects',s.id,Object.assign({},strip(s),{concursoIds:(s.concursoIds||[]).filter(x=>x!==id)}));
       const wasAct=cursoAct()===id;await del('concursos',id);if(wasAct)await cursoSet('');toast('Curso excluído');cursoChooser(first);return}});
-  d.querySelector('#csnew').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),n=String(f.get('n')||'').trim();if(!n)return;const id='c_'+uid();await put('concursos',id,{name:n,cargo:String(f.get('c')||'').trim(),banca:String(f.get('b')||'').trim(),edital:'',examDate:'',createdAt:Date.now()});
+  d.querySelector('#csnew').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),n=String(f.get('n')||'').trim();if(!n){toast('Digite o nome do concurso');const ni=d.querySelector('[name=n]');ni.focus();ni.style.outline='2px solid #ef4444';return}const sb=e.target.querySelector('[type=submit]');if(sb.disabled)return;sb.disabled=true;sb.textContent='Cadastrando…';try{const id='c_'+uid();await put('concursos',id,{name:n,cargo:String(f.get('c')||'').trim(),banca:String(f.get('b')||'').trim(),edital:'',examDate:'',createdAt:Date.now()});
     const picked=csAZ([...SEL]),CORES=['#3b82f6','#16a34a','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#14b8a6'];let k=0,made=0;
     for(const nm of picked){const nn=nm.toLowerCase();const ex=S.subjects.find(s=>!s._tpl&&String(s.name||'').trim().toLowerCase()===nn);
       if(ex){await put('subjects',ex.id,Object.assign({},strip(ex),{concursoIds:[...new Set([...(ex.concursoIds||[]),id])],updatedAt:Date.now()}))}
       else{await put('subjects','s_'+uid(),{name:nm,emoji:'',color:CORES[(k++)%CORES.length],concursoIds:[id],createdAt:Date.now()+made,updatedAt:Date.now()});made++}}
-    await cursoSet(id);d.remove();toast(picked.length?'Concurso cadastrado com '+picked.length+' disciplina'+(picked.length>1?'s':''):'Concurso cadastrado')};
+    await cursoSet(id);d.remove();toast(picked.length?'Concurso cadastrado com '+picked.length+' disciplina'+(picked.length>1?'s':''):'Concurso cadastrado')}catch(err){console.error(err);sb.disabled=false;sb.textContent='Cadastrar e começar';toast('Erro ao cadastrar: '+(err&&err.message||err))}};
   document.body.appendChild(d);
 }
 
