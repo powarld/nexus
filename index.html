@@ -833,6 +833,18 @@ function saRecoveryUI(sb){
     d.querySelector('form').onsubmit=async ev=>{ev.preventDefault();const fd=new FormData(ev.target),p=fd.get('p'),m=d.querySelector('div');if(p!==fd.get('p2')){m.textContent='As senhas não são iguais.';return}const r=await sb.auth.updateUser({password:String(p)});if(r.error){m.textContent=r.error.message;return}d.remove();history.replaceState(null,'',location.pathname);res()};
     document.body.appendChild(d)})
 }
+const NXSYNC=(String(location.hash).match(/^#nxsync=([\w.\-]+)$/)||[])[1]||'';
+async function saImportSync(sb,uid){
+  try{const k=NXSYNC;try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+    const bin=Uint8Array.from(atob(k.slice(2).replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));let u8=bin;
+    if(k[0]==='g'){const ds=new DecompressionStream('gzip'),w=ds.writable.getWriter();w.write(bin);w.close();u8=new Uint8Array(await new Response(ds.readable).arrayBuffer())}
+    const j=JSON.parse(new TextDecoder().decode(u8));const rows=(j.rows||[]).filter(x=>x&&/^\d{4}-\d\d-\d\d$/.test(x.date)).map(x=>({user_id:uid,coll:'d/sessions',id:x.date,data:x,updated_at:new Date().toISOString()}));
+    if(!rows.length){toast('Nada para importar');return}
+    const b=busy('Importando estudos do app…');
+    for(let i=0;i<rows.length;i+=100){const r=await sb.from('docs').upsert(rows.slice(i,i+100),{onConflict:'user_id,coll,id'});if(r.error){b.end();toast('Falha ao importar: '+r.error.message);return}}
+    b.end();toast('Importado: '+rows.length+' dias. Recarregando…');setTimeout(()=>location.reload(),900)
+  }catch(e){console.error(e);toast('Link de importação inválido')}
+}
 function saRoot(sb,uid){
   const parse=p=>{if(p.startsWith('pmdf_'))return{t:'tpl',c:p.slice(5)};if(p==='rank')return{t:'rank'};const m=p.match(/^data\/users\/[^/]+\/(.+)$/);return{t:'docs',c:m?m[1]:p}};
   const nowIso=()=>new Date().toISOString();
@@ -886,6 +898,7 @@ async function saBoot(){
   const us={me:async()=>({email:user.email,name:(user.user_metadata&&user.user_metadata.name)||'',isOwner:isAdmin}),id:async()=>user.id};
   const root=saRoot(sb,user.id);
   if(isAdmin)setTimeout(async()=>{await saImportCourse(sb);await saImportExtra(sb)},1500);
+  if(isAdmin&&NXSYNC)setTimeout(()=>saImportSync(sb,user.id),2500);
   return{root,dl:{save:saSave},us,sb};
 }
 
