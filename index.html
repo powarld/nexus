@@ -1039,7 +1039,7 @@ function rkStats(){
   let skb=0,run=0,prev='';const brid=(a,b)=>{let x=addDays(a,1);while(x<b){if(!rs.has(x))return false;x=addDays(x,1)}return true};Object.keys(md).sort().forEach(d=>{run=prev&&brid(prev,d)?run+1:1;prev=d;if(run>skb)skb=run});
   return {sk,skb:Math.max(skb,sk),name:pfName(),q:ans.length,qok:ans.filter(isOk).length,min:Math.round(mins),wq:wk.length,wqok:wk.filter(isOk).length,wmin:Math.round(wm),dm,dq,rest:(cfg().rest||[]).filter(x=>x>=d70),fail:(cfg().fail||[]).filter(x=>x>=d70),upd:Date.now(),wk:t}}
 async function rkSync(force){
-  try{if(!RDB||!PFID||PFID==='admin')return;const now=Date.now();if(!force&&V.rk.t&&now-V.rk.t<60000)return;if(!V.loaded.sessions||!V.loaded.questions)return;V.rk.t=now;
+  try{if(!RDB||!PFID)return;const now=Date.now();if(!force&&V.rk.t&&now-V.rk.t<60000)return;if(!V.loaded.sessions||!V.loaded.questions)return;V.rk.t=now;
     await RDB.collection('rank').doc(PFID).set(rkStats())}catch(e){console.error('rank',e)}}
 function rkListen(){try{if(!RDB)return;RDB.collection('rank').onSnapshot(sn=>{V.rk.docs=sn.docs.map(d=>Object.assign({id:d.id},d.data()));if(V.view==='rank')scheduleRender()},e=>console.error('rank',e))}catch(e){console.error(e)}}
 VIEWS.rank=()=>{
