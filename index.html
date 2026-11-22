@@ -535,7 +535,7 @@ const IC={
  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'
 };
 const ico=n=>`<svg class="i" viewBox="0 0 24 24">${IC[n]||''}</svg>`;
-const NAV=[['dash','Visão geral','home'],['metas','Planejamento','target'],['study','Conteúdo','book'],['maps','Mapas mentais','brain'],['questions','Questões','check'],['errnotes','Caderno de erros','pen'],['perf','Desempenho','chart'],['rank','Ranking','chart'],['cards','Flashcards','cards'],['rev','Revisões','cal'],['campanha','Campanha','flag'],['kb','Conhecimento','brain'],['goals','Metas','target'],['projects','Projetos e tarefas','kanban'],['agenda','Agenda','cal'],['journal','Diário','pen'],['ai','Assistente','spark'],['profile','Perfil','user'],['settings','Ajustes','gear']];
+const NAV=[['dash','Visão geral','home'],['metas','Planejamento','target'],['hist','Histórico de estudo','cal'],['study','Conteúdo','book'],['maps','Mapas mentais','brain'],['questions','Questões','check'],['errnotes','Caderno de erros','pen'],['perf','Desempenho','chart'],['rank','Ranking','chart'],['cards','Flashcards','cards'],['rev','Revisões','cal'],['campanha','Campanha','flag'],['kb','Conhecimento','brain'],['goals','Metas','target'],['projects','Projetos e tarefas','kanban'],['agenda','Agenda','cal'],['journal','Diário','pen'],['ai','Assistente','spark'],['profile','Perfil','user'],['settings','Ajustes','gear']];
 const PROF=['goals','projects','agenda','journal','ai'];
 
 /* ---- entidades e formulários ---- */
@@ -2364,6 +2364,24 @@ document.addEventListener('change',e=>{const el=e.target;if(el&&el.dataset&&el.d
 ACT.cicloReg=b=>{const c=cicloDoc();let m=cicloSess(c);if(b&&b.dataset&&b.dataset.id){T.subj=b.dataset.id;const k=(c.seq||[]).findIndex((x,i)=>x===b.dataset.id&&!(c.sdone||[])[i]);if(k>=0&&c.smin&&c.smin[k])m=c.smin[k]}regSheet(m)};
 const cicloSave=async d=>{await put('metas','ciclo',Object.assign({kind:'ciclo'},cicloDoc(),d));render()};
 ACT.cicloEd=()=>{V.cicloEd=!V.cicloEd;render()};
+ACT.hfilt=b=>{V.hf=b.dataset.id||'';render()};
+VIEWS.hist=()=>{
+  const L=[];S.sessions.forEach(x=>(x.log||[]).forEach(l=>L.push(Object.assign({date:x.date},l))));
+  const all=L.filter(l=>!l.sj||l.sj==='geral'||get('subjects',l.sj)).sort((a,b)=>(b.at||0)-(a.at||0)||String(b.date).localeCompare(String(a.date)));
+  const nm=id=>{const s=id&&id!=='geral'?get('subjects',id):null;return s?s.name:'Geral'};
+  const where=l=>{const p=[],t=l.tp?get('topics',l.tp):null;if(t)p.push(esc(clip(t.name||'',60)));if(l.au)p.push('seção: '+esc(clip(l.au,60)));
+    if(l.pi!==''&&l.pi!=null&&l.pf!==''&&l.pf!=null)p.push('págs. '+l.pi+' a '+l.pf);else if(l.pf!==''&&l.pf!=null)p.push('até a pág. '+l.pf);else if(l.pi!==''&&l.pi!=null)p.push('pág. '+l.pi);
+    if(l.qn)p.push('questão '+esc(l.qn));return p};
+  const qtxt=l=>l.qf!==''&&l.qf!=null?(l.qf+' questões'+(l.qa!==''&&l.qa!=null?', '+l.qa+' acertos ('+Math.round((+l.qa||0)/(+l.qf||1)*100)+'%)':'')):'';
+  const last={};all.forEach(l=>{const k=l.sj||'geral';if(!last[k]&&l.tk!=='Revisão'&&where(l).length)last[k]=l});
+  const lk=Object.keys(last);
+  const stop=lk.length?`<div class="sec"><h2 style="font-size:16px">Onde parei</h2><div class="list">${lk.map(k=>{const l=last[k];return `<div class="card" style="padding:12px;margin:0 0 8px;border-left:3px solid var(--accent)"><b>${esc(nm(k))}</b><div class="tiny muted" style="margin-top:2px">${fdate(l.date)} · ${esc(l.tk||'Estudo')}</div><div style="margin-top:6px">${where(l).join(' · ')}</div></div>`}).join('')}</div></div>`:'';
+  const f=V.hf||'',shown=f?all.filter(l=>(l.sj||'geral')===f):all;
+  const ids=[...new Set(all.map(l=>l.sj||'geral'))];
+  const chips=ids.length>1?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px"><button class="btn sm ${f?'':'pri'}" data-act="hfilt" data-id="">Todas</button>${ids.map(i=>`<button class="btn sm ${f===i?'pri':''}" data-act="hfilt" data-id="${i}">${esc(nm(i))}</button>`).join('')}</div>`:'';
+  let cur='';const rows=shown.slice(0,200).map(l=>{const h=l.date!==cur?(cur=l.date,`<div class="tiny muted" style="margin:12px 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">${fdate(l.date)}</div>`):'';const w=where(l),q=qtxt(l);
+    return h+`<div class="card" style="padding:12px;margin:0 0 8px"><div class="row"><b class="grow">${esc(nm(l.sj))}</b><span class="tiny muted">${esc(l.tk||'Estudo')} · ${cicloH(l.min||0)}</span></div>${w.length?`<div style="margin-top:6px">${w.join(' · ')}</div>`:''}${q?`<div class="tiny" style="margin-top:4px">${q}</div>`:''}${l.cm?`<div class="tiny muted" style="margin-top:4px">${esc(clip(l.cm,200))}</div>`:''}</div>`}).join('');
+  return head('Histórico de estudo','<button class="btn pri sm" data-act="addmin" data-m="0">Registrar estudo</button>')+(all.length?stop+`<div class="sec"><h2 style="font-size:16px">Registros</h2>${chips}${rows}</div>`:`<div class="sec">${empty('Nenhum estudo registrado','Registre um estudo e ele aparece aqui, com a página e a questão onde você parou.')}</div>`)};
 ACT.cicloPlanMin=()=>{V.cicloPlanMin=!cpMin(cicloDoc());render()};
 ACT.cicloSel=async b=>{const all=cicloAll().map(x=>x.id),cur=cicloSubs().map(x=>x.id),id=b.dataset.id,n=cur.includes(id)?cur.filter(x=>x!==id):all.filter(x=>cur.includes(x)||x===id);await cicloSave({sel:n,done:{},seq:[],sdone:[]})};
 ACT.cicloTodas=async()=>{await cicloSave({sel:cicloAll().map(x=>x.id),done:{},seq:[],sdone:[]})};
