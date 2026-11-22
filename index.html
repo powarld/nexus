@@ -2386,7 +2386,7 @@ VIEWS.metas=()=>{
   const P=V.mtk;if(!TRU.find(t=>t.id===P.trilha)){const cur=TRU.find(t=>S.metas.some(m=>m.kind==='meta'&&m.trilha===t.id&&!m.done));P.trilha=cur?cur.id:(TRU.length?TRU[TRU.length-1].id:'')}
   const tr=TR.find(t=>t.id===P.trilha);
   const hd=head('Planejamento','')+`<div class="muted" style="margin:-2px 0 14px;font-size:14px">Acompanhe seu progresso e veja o que falta para atingir sua meta.</div>`;
-  if(!tr)return hd.replace('Acompanhe seu progresso e veja o que falta para atingir sua meta.','Sem trilha enviada: seguindo o ciclo de matérias.')+cicloView();
+  if(!tr)return hd.replace('Acompanhe seu progresso e veja o que falta para atingir sua meta.','Sem trilha enviada: seguindo o ciclo de matérias.')+'<div class="tiny" style="padding:10px 12px;border-radius:10px;border-left:3px solid var(--accent);background:#8882;margin:0 0 10px"><b>Dica:</b> escolha um ciclo de <b>4 a 6 matérias</b>. Poucas matérias seguram o foco e fazem cada volta fechar rápido; muitas deixam o ciclo longo e você demora a rever cada uma. Termine a volta, troque as que já dominou e comece outra.</div>'+cicloView();
   const ix=TR.indexOf(tr),num=tr.num||ix+1,nextT=TR[ix+1],nextU=!!nextT&&unl[ix+1];
   const ML=S.metas.filter(x=>x.kind==='meta'&&x.trilha===tr.id).sort((a,b)=>(a.n||0)-(b.n||0));
   const done=ML.filter(m=>m.done),pend=ML.filter(m=>!m.done),nxt=pend[0];
