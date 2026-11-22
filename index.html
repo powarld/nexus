@@ -787,7 +787,7 @@ function alerts(){
 }
 const isOk=q=>norm(q.marked)===norm(q.gab);
 function perfBySubject(){
-  const m={};S.questions.filter(q=>q.marked).forEach(q=>{const k=q.subjectId||'';(m[k]=m[k]||{n:0,ok:0}).n++;if(isOk(q))m[k].ok++});
+  const m={};qAns().forEach(q=>{const k=q.subjectId||'';(m[k]=m[k]||{n:0,ok:0}).n++;if(isOk(q))m[k].ok++});
   return Object.entries(m).map(([k,v])=>({id:k,name:(get('subjects',k)||{name:'Sem disciplina'}).name,n:v.n,ok:v.ok,pct:Math.round(v.ok/v.n*100)}));
 }
 function subjProgress(id){const t=S.topics.filter(x=>x.subjectId===id);if(!t.length)return{n:0,d:0,p:0};const d=t.filter(x=>x.status==='dominado').length;return{n:t.length,d,p:Math.round(d/t.length*100)}}
@@ -950,7 +950,7 @@ const W={
  concursos:()=>wBox('Concursos em preparação',S.concursos.length?`<div class="list">${S.concursos.map(c=>{const dd=c.examDate?Math.ceil((new Date(c.examDate+'T12:00:00')-new Date())/864e5):null;return itemBtn('concursos',c,[c.cargo,c.banca].filter(Boolean).join(' · '),dd!=null?`<span class="chip">${dd>0?dd+' dias':'prova'}</span>`:'')}).join('')}</div>`:'<span class="muted">Cadastre seu concurso em Estudos.</span>'),
  disc:()=>wBox('Disciplinas em andamento',S.subjects.length?`<div class="list">${S.subjects.slice(0,6).map(s=>{const p=subjProgress(s.id);return `<button class="item" data-act="open" data-c="subjects" data-id="${s.id}"><span class="em">${esc(s.emoji||'📘')}</span><span class="t"><b>${esc(s.name)}</b><div class="bar" style="margin-top:6px"><i style="width:${p.p}%;background:${s.color||'var(--accent)'}"></i></div></span><span class="tiny muted">${p.d}/${p.n}</span></button>`}).join('')}</div>`:'<span class="muted">Nenhuma disciplina ainda.</span>'),
  anki:()=>{const n=cardsDue().length,nq=S.cards.filter(c=>(c.hist||[]).some(h=>h.d===today())).length;return wBox('Revisões pendentes',`<div class="kpis"><div class="kpi k3"><span>Cards a revisar</span><b>${n}</b></div><div class="kpi k1"><span>Revisados hoje</span><b>${nq}</b></div></div><div class="row" style="margin-top:10px;justify-content:center"><button class="btn pri sm" data-act="goto" data-v="cards" data-p="{}">Revisar agora</button></div>`)},
- qmat:()=>{const t=today(),qs=S.questions.filter(q=>q.marked&&q.date===t),g={};qs.forEach(q=>{const k=q.subjectId&&get('subjects',q.subjectId)?q.subjectId:'';(g[k]=g[k]||{n:0,ok:0}).n++;if(isOk(q))g[k].ok++});
+ qmat:()=>{const t=today(),qs=qAns().filter(q=>q.date===t),g={};qs.forEach(q=>{const k=q.subjectId&&get('subjects',q.subjectId)?q.subjectId:'';(g[k]=g[k]||{n:0,ok:0}).n++;if(isOk(q))g[k].ok++});
    const rows=Object.entries(g).sort((a,b)=>b[1].n-a[1].n);
    return wBox('Questões de hoje por matéria',rows.length?`<div class="list">${rows.map(([k,v])=>`<button class="item" data-act="goto" data-v="questions" data-p="{}"><span class="em">${(k&&get('subjects',k).emoji)||'📝'}</span><span class="t">${esc(k?get('subjects',k).name:'Sem disciplina')}<div class="tiny muted">${v.ok} certas · ${v.n-v.ok} erradas · ${Math.round(v.ok/v.n*100)}%</div></span><b style="font-size:20px">${v.n}</b></button>`).join('')}</div><div class="tiny muted" style="margin-top:8px">Total hoje: <b>${qs.length}</b> questões</div>`:empty('Nenhuma questão resolvida hoje','Resolva na aba Questões e o total por matéria aparece aqui.'))},
  sums:()=>{const r=by(S.summaries,'updatedAt','desc').slice(0,5);return wBox('Últimos resumos',r.length?`<div class="list">${r.map(x=>itemBtn('summaries',x,((get('subjects',x.subjectId)||{}).name||'Sem disciplina')+' · '+fdate(x.updatedAt?dstr(new Date(x.updatedAt)):''))).join('')}</div>`:'<span class="muted">Nenhum resumo.</span>')},
@@ -1009,8 +1009,10 @@ ACT.restoff=async()=>{const t=today(),c=cfg();if(!(c.rest||[]).includes(t))retur
 
 /* ================= RANKING entre usuários ================= */
 V.rk=V.rk||{per:'week',docs:[],t:0};
+function regQs(){const o=[];(S.sessions||[]).forEach(x=>(x.log||[]).forEach(l=>{const n=Math.max(0,Math.round(+l.qf||0));if(!n||l.qf===''||l.qf==null)return;const a=Math.min(n,Math.max(0,Math.round(+l.qa||0)));const d=x.date||x.id;for(let i=0;i<n;i++)o.push({id:'_rg',_reg:1,marked:'C',gab:i<a?'C':'E',subjectId:l.sj&&l.sj!=='geral'?l.sj:'',topicId:l.tp||'',date:d})}));return o}
+function qAns(){return S.questions.filter(q=>q.marked&&q.marked!=='__nao').concat(regQs())}
 function rkStats(){
-  const t=today(),w0=addDays(t,-6),ans=S.questions.filter(q=>q.marked&&q.marked!=='__nao'),wk=ans.filter(q=>(q.date||'')>=w0);
+  const t=today(),w0=addDays(t,-6),ans=qAns(),wk=ans.filter(q=>(q.date||'')>=w0);
   const mins=S.sessions.reduce((n,x)=>n+(x.minutes||0),0),wm=S.sessions.filter(x=>(x.date||'')>=w0).reduce((n,x)=>n+(x.minutes||0),0);
   const md={};S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date)md[x.date]=1});const dm={},d70=addDays(t,-70);S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date&&x.date>=d70)dm[x.date]=Math.round(x.minutes)});
   const dq={};ans.forEach(q=>{if(q.date&&q.date>=d70)dq[q.date]=(dq[q.date]||0)+1});const rs=new Set(cfg().rest||[]);let k=t;if(!md[k])k=addDays(k,-1);let sk=0;while(md[k]||rs.has(k)){if(md[k])sk++;k=addDays(k,-1)}
@@ -1057,7 +1059,7 @@ VIEWS.dash=()=>{
   const nextExam=S.concursos.filter(x=>x.examDate&&x.examDate>=today()).sort((a,b)=>a.examDate>b.examDate?1:-1)[0];
   const ddays=nextExam?Math.ceil((new Date(nextExam.examDate+'T12:00:00')-new Date())/864e5):null;
   const nd=cardsDue().length,tt=S.tasks.filter(x=>taskOpen(x)&&x.due&&x.due<=today()).length;
-  const qh=S.questions.filter(q=>q.marked&&q.date===today()),qhOk=qh.filter(isOk).length,runM=T.running?elapsed()/60000:0;
+  const qh=qAns().filter(q=>q.date===today()),qhOk=qh.filter(isOk).length,runM=T.running?elapsed()/60000:0;
   const K=[['⏱️','Estudado hoje',hm(minutesOn(today())+runM)+(T.running?' ▸':''),'study'],['📝','Questões hoje',qh.length+(qh.length?' · '+Math.round(qhOk/qh.length*100)+'% ✓':''),'study'],['🃏','Cards a revisar',nd,'cards'],['🔥','Dias seguidos',(()=>{let n=0,k=today();const ok=d=>minutesOn(d)>0||(d===today()&&T.running);if(!ok(k))k=addDays(k,-1);while(ok(k)){n++;k=addDays(k,-1)}return n+(n===1?' dia':' dias')})(),'study']];
   return head('Hoje',`<button class="btn sm" data-act="report">Relatório</button><button class="btn sm" data-act="widgets">Personalizar</button>`)+
   `<div class="tiny muted" style="margin:-2px 0 12px">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</div>
@@ -2193,7 +2195,7 @@ function pfData(){
   const sj=Object.fromEntries(S.subjects.map(s=>[s.id,s.name]));
   const tm={},qa={},qo={};let totMin=0,days=0;
   S.sessions.forEach(x=>{const m=x.minutes||0;if(m>0){totMin+=m;days++}Object.entries(x.by||{}).forEach(([k,v])=>{if(sj[k])tm[k]=(tm[k]||0)+v})});
-  const ans=S.questions.filter(q=>q.marked&&q.marked!=='__nao');
+  const ans=qAns();
   ans.forEach(q=>{const k=q.subjectId;if(!sj[k])return;qa[k]=(qa[k]||0)+1;if(isOk(q))qo[k]=(qo[k]||0)+1});
   const ok=ans.filter(isOk).length;
   return {sj,tm,qa,qo,totMin,days,ans,ok};
@@ -2484,7 +2486,7 @@ VIEWS.metas=()=>{
   const ini=ef[ix]||'',t=today();
   const sids=new Set(subs.map(s=>s.id));
   let mins=0;if(ini)S.sessions.forEach(x=>{const d=x.date||x.id;if(d>=ini)Object.entries(x.by||{}).forEach(([k,v])=>{if(sids.has(k))mins+=v})});
-  const qs=ini?S.questions.filter(q=>q.marked&&q.marked!=='__nao'&&sids.has(q.subjectId)&&q.date>=ini):[];
+  const qs=ini?qAns().filter(q=>sids.has(q.subjectId)&&q.date>=ini):[];
   const qok=qs.filter(isOk).length,dias=ini?Math.max(1,Math.round((new Date(t+'T12:00:00')-new Date(ini+'T12:00:00'))/864e5)+1):0;
   const fp=n=>String(n).replace('.',',');
   const K=[['k1','Seu desempenho',qs.length?fp((qok/qs.length*100).toFixed(1))+'%':'0,0%'],['k2','Horas estudadas',hm(mins)],['k3','Questões resolvidas',String(qs.length)],['k4','Média de horas diárias',dias?hm(mins/dias):'00h00m']];
@@ -2548,7 +2550,7 @@ VIEWS.campanha=()=>{
     const fim=all?(dn.map(m=>m.done).sort().pop()||td):td;
     const subs=new Set(ML.map(m=>{const j=mtkSubj(m);return j&&j.id}).filter(Boolean));
     let mins=0;if(ini)S.sessions.forEach(x=>{const d=x.date||x.id;if(d>=ini&&d<=fim)Object.entries(x.by||{}).forEach(([k,v])=>{if(subs.has(k))mins+=v})});
-    const qs=ini?S.questions.filter(q=>q.marked&&q.marked!=='__nao'&&subs.has(q.subjectId)&&q.date>=ini&&q.date<=fim):[];
+    const qs=ini?qAns().filter(q=>subs.has(q.subjectId)&&q.date>=ini&&q.date<=fim):[];
     const qok=qs.filter(isOk).length,dias=ini?Math.max(1,Math.round((new Date(fim+'T12:00:00')-new Date(ini+'T12:00:00'))/864e5)+1):0;
     const fp=n=>String(n).replace('.',',');
     const dt=iso=>iso?iso.slice(8)+'/'+iso.slice(5,7)+'/'+iso.slice(0,4):'—';
@@ -2657,7 +2659,7 @@ VIEWS.questions=()=>{
     body=arr.length?`<div class="list">${by(arr,'date','desc').map(q=>`<button class="item" data-act="edit" data-c="questions" data-id="${q.id}"><span class="chip ${!q.marked?'novo':isOk(q)?'dominado':'p1'}">${!q.marked?'Pendente':isOk(q)?'Acerto':'Erro'}</span><span class="t">${esc(clip(q.statement,150))}<div class="tiny muted">${esc((get('subjects',q.subjectId)||{}).name||'Sem disciplina')} · ${esc(q.banca||'')} · marcou ${esc(q.marked)} / gab. ${esc(q.gab)}${q.err?' · '+esc(q.err):''}</div></span></button>`).join('')}</div>`:empty('Nenhuma questão','Registre questões resolvidas: enunciado, gabarito, resposta marcada e o tipo de erro.');
   }else{
     const subj=perfBySubject().sort((a,b)=>a.pct-b.pct);
-    const tp={};S.questions.filter(q=>q.marked).forEach(q=>{if(!q.topicId)return;(tp[q.topicId]=tp[q.topicId]||{n:0,ok:0}).n++;if(isOk(q))tp[q.topicId].ok++});
+    const tp={};qAns().forEach(q=>{if(!q.topicId)return;(tp[q.topicId]=tp[q.topicId]||{n:0,ok:0}).n++;if(isOk(q))tp[q.topicId].ok++});
     const topics=Object.entries(tp).map(([k,v])=>({name:(get('topics',k)||{name:'?'}).name,n:v.n,pct:Math.round(v.ok/v.n*100)})).sort((a,b)=>a.pct-b.pct);
     const P=V.qper||'sem',tdy=today(),MN=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
     const bk=[];
@@ -2953,7 +2955,7 @@ function reportText(k){
   const days=[];for(let d=from;d<=t;d=addDays(d,1))days.push(d);
   const mins=days.reduce((a,d)=>a+minutesOn(d),0);
   let rev=0,revOk=0;S.cards.forEach(c=>(c.hist||[]).forEach(h=>{if(h.d>=from&&h.d<=t){rev++;if(h.ok)revOk++}}));
-  const qs=S.questions.filter(q=>q.marked&&q.date>=from&&q.date<=t),qk=qs.filter(isOk).length;
+  const qs=qAns().filter(q=>q.date>=from&&q.date<=t),qk=qs.filter(isOk).length;
   const done=S.tasks.filter(x=>x.status==='done'&&x.doneAt&&x.doneAt>=from&&x.doneAt<=t);
   const al=alerts().filter(x=>x.lvl!=='info');
   return `# Relatório ${k==='semana'?'da semana':'do dia'} · ${fdate(from)}${k==='semana'?' a '+fdate(t):''}\n\n## Estudos\n- Tempo estudado: ${Math.floor(mins/60)}h${pad(mins%60)}\n- Cards revisados: ${rev}${rev?' ('+Math.round(revOk/rev*100)+'% de acerto)':''}\n- Questões resolvidas: ${qs.length}${qs.length?' ('+Math.round(qk/qs.length*100)+'% de acerto)':''}\n- Resumos criados ou editados: ${S.summaries.filter(x=>x.updatedAt&&dstr(new Date(x.updatedAt))>=from).length}\n\n## Produtividade\n- Tarefas concluídas: ${done.length}\n${done.map(x=>'  - '+x.title).join('\n')}\n- Tarefas abertas: ${S.tasks.filter(taskOpen).length}\n- Metas em andamento: ${S.goals.filter(g=>goalProg(g)<100).length}\n\n## Pontos de atenção\n${al.length?al.map(x=>'- '+x.txt).join('\n'):'- Nenhum alerta.'}\n`;
