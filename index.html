@@ -427,7 +427,7 @@ function cursoChooser(first){
       const wasAct=cursoAct()===id;await del('concursos',id);if(wasAct)await cursoSet('');toast('Curso excluído');cursoChooser(first);return}});
   d.querySelector('#csnew').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),n=String(f.get('n')||'').trim();if(!n){toast('Digite o nome do concurso');const ni=d.querySelector('[name=n]');ni.focus();ni.style.outline='2px solid #ef4444';return}const sb=e.target.querySelector('[type=submit]');if(sb.disabled)return;sb.disabled=true;sb.textContent='Cadastrando…';try{const id='c_'+uid();await put('concursos',id,{name:n,cargo:String(f.get('c')||'').trim(),banca:String(f.get('b')||'').trim(),edital:'',examDate:'',createdAt:Date.now()});
     const picked=csAZ([...SEL]),CORES=['#3b82f6','#16a34a','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#14b8a6'];let k=0,made=0;
-    for(const nm of picked){const nn=nm.toLowerCase();const ex=S.subjects.find(s=>!s._tpl&&String(s.name||'').trim().toLowerCase()===nn);
+    for(const nm of picked){const nn=nm.toLowerCase();const ex=null;
       if(ex){await put('subjects',ex.id,Object.assign({},strip(ex),{concursoIds:[...new Set([...(ex.concursoIds||[]),id])],updatedAt:Date.now()}))}
       else{await put('subjects','s_'+uid(),{name:nm,emoji:'',color:CORES[(k++)%CORES.length],concursoIds:[id],createdAt:Date.now()+made,updatedAt:Date.now()});made++}}
     await cursoSet(id);d.remove();toast(picked.length?'Concurso cadastrado com '+picked.length+' disciplina'+(picked.length>1?'s':''):'Concurso cadastrado')}catch(err){console.error(err);sb.disabled=false;sb.textContent='Cadastrar e começar';toast('Erro ao cadastrar: '+(err&&err.message||err))}};
