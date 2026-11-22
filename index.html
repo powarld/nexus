@@ -752,6 +752,12 @@ function wordEdit(d){
     if(nm!==(d.md||''))body.hist=[{t:Date.now(),md:d.md||''}].concat(d.hist||[]).slice(0,8);
     await put('summaries',d.id,body);toast('Resumo salvo')},{wide:true,nofocus:true,save:'Salvar'})}
 ACT.editmeta=b=>{const d=get('summaries',b.dataset.id);if(d)openForm('summaries',d)};
+ACT.hdel=b=>{const d=b.dataset.d,i=+b.dataset.i;if(hrGuard(d))return;const x=get('sessions',d);if(!x||!x.log||!x.log[i])return;
+  confirmDel('Excluir este registro de estudo? As horas e as questões dele saem das estatísticas. Não dá para desfazer.',async()=>{
+    const cur=get('sessions',d);if(!cur||!cur.log||!cur.log[i])return;const l=cur.log[i],m=Math.round(+l.min||0),k=l.sj||'geral';
+    const log=cur.log.filter((_,j)=>j!==i),by=Object.assign({},cur.by||{});
+    if(by[k]!=null){by[k]=Math.max(0,by[k]-m);if(!by[k])delete by[k]}
+    await put('sessions',d,Object.assign({},cur,{date:d,minutes:Math.max(0,(cur.minutes||0)-m),by,log}));toast('Registro excluído')})};
 ACT.delrec=b=>confirmDel('Excluir este item? Esta ação não pode ser desfeita.',async()=>{await cascade(b.dataset.c,b.dataset.id);if(V.p.id===b.dataset.id)goBack()});
 ACT.wikilink=b=>{const t=norm(b.dataset.t);const it=allItems().find(x=>['notes','summaries','materials'].includes(x.c)&&norm(x.title)===t);if(it)openRecord(it.c,it.id);else toast('Nenhum registro com o título "'+b.dataset.t+'"')};
 
@@ -2438,7 +2444,7 @@ const cicloSave=async d=>{await put('metas','ciclo',Object.assign({kind:'ciclo'}
 ACT.cicloEd=()=>{V.cicloEd=!V.cicloEd;render()};
 ACT.hfilt=b=>{V.hf=b.dataset.id||'';render()};
 VIEWS.hist=()=>{
-  const L=[];S.sessions.forEach(x=>(x.log||[]).forEach(l=>L.push(Object.assign({date:x.date},l))));
+  const L=[];S.sessions.forEach(x=>(x.log||[]).forEach((l,i)=>L.push(Object.assign({date:x.date,_i:i},l))));
   const all=L.filter(l=>!l.sj||l.sj==='geral'||get('subjects',l.sj)).sort((a,b)=>(b.at||0)-(a.at||0)||String(b.date).localeCompare(String(a.date)));
   const nm=id=>{const s=id&&id!=='geral'?get('subjects',id):null;return s?s.name:'Geral'};
   const where=l=>{const p=[],t=l.tp?get('topics',l.tp):null;if(t)p.push(esc(clip(t.name||'',60)));if(l.au)p.push('seção: '+esc(clip(l.au,60)));
@@ -2452,7 +2458,7 @@ VIEWS.hist=()=>{
   const ids=[...new Set(all.map(l=>l.sj||'geral'))];
   const chips=ids.length>1?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px"><button class="btn sm ${f?'':'pri'}" data-act="hfilt" data-id="">Todas</button>${ids.map(i=>`<button class="btn sm ${f===i?'pri':''}" data-act="hfilt" data-id="${i}">${esc(nm(i))}</button>`).join('')}</div>`:'';
   let cur='';const rows=shown.slice(0,200).map(l=>{const h=l.date!==cur?(cur=l.date,`<div class="tiny muted" style="margin:12px 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">${fdate(l.date)}</div>`):'';const w=where(l),q=qtxt(l);
-    return h+`<div class="card" style="padding:12px;margin:0 0 8px"><div class="row"><b class="grow">${esc(nm(l.sj))}</b><span class="tiny muted">${esc(l.tk||'Estudo')} · ${cicloH(l.min||0)}</span></div>${w.length?`<div style="margin-top:6px">${w.join(' · ')}</div>`:''}${q?`<div class="tiny" style="margin-top:4px">${q}</div>`:''}${l.cm?`<div class="tiny muted" style="margin-top:4px">${esc(clip(l.cm,200))}</div>`:''}</div>`}).join('');
+    return h+`<div class="card" style="padding:12px;margin:0 0 8px"><div class="row"><b class="grow">${esc(nm(l.sj))}</b><span class="tiny muted">${esc(l.tk||'Estudo')} · ${cicloH(l.min||0)}</span></div>${w.length?`<div style="margin-top:6px">${w.join(' · ')}</div>`:''}${q?`<div class="tiny" style="margin-top:4px">${q}</div>`:''}${l.cm?`<div class="tiny muted" style="margin-top:4px">${esc(clip(l.cm,200))}</div>`:''}<div style="margin-top:8px;text-align:right"><button class="btn sm" data-act="hdel" data-d="${l.date}" data-i="${l._i}">Excluir registro</button></div></div>`}).join('');
   return head('Histórico de estudo','<button class="btn pri sm" data-act="addmin" data-m="0">Registrar estudo</button>')+restCard()+(all.length?stop+`<div class="sec"><h2 style="font-size:16px">Registros</h2>${chips}${rows}</div>`:`<div class="sec">${empty('Nenhum estudo registrado','Registre um estudo e ele aparece aqui, com a página e a questão onde você parou.')}</div>`)};
 ACT.cicloPlanMin=()=>{V.cicloPlanMin=!cpMin(cicloDoc());render()};
 ACT.cicloSel=async b=>{const all=cicloAll().map(x=>x.id),cur=cicloSubs().map(x=>x.id),id=b.dataset.id,n=cur.includes(id)?cur.filter(x=>x!==id):all.filter(x=>cur.includes(x)||x===id);await cicloSave({sel:n,done:{},seq:[],sdone:[]})};
