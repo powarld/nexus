@@ -378,7 +378,7 @@ const CURSOS=true;
 let ADMIN=false,RDB=null;const TPLC=['subjects','topics','concursos','notes','summaries','materials','cards','decks','questions','maps','mapimgs','lulu'],TPL={},OWN={};
 const cursoAct=()=>CURSOS?(ADMIN?'c_pmdf':(cfg().cursoAtivo||'')):'';
 const tplOn=()=>CURSOS&&!ADMIN&&cursoAct()==='c_pmdf';
-function mergeTpl(c){const own=OWN[c]||[];if(!(tplOn()||(CURSOS&&!ADMIN&&['questions','subjects','topics'].includes(c))))return own.filter(x=>!x._del);const ids=new Set(own.map(x=>x.id));return own.filter(x=>!x._del).concat((TPL[c]||[]).filter(x=>!ids.has(x.id)).map(x=>Object.assign({},x,{_tpl:1})))}
+function mergeTpl(c){const own=OWN[c]||[];if(!(tplOn()||(CURSOS&&!ADMIN&&['questions'].includes(c))))return own.filter(x=>!x._del);const ids=new Set(own.map(x=>x.id));return own.filter(x=>!x._del).concat((TPL[c]||[]).filter(x=>!ids.has(x.id)).map(x=>Object.assign({},x,{_tpl:1})))}
 function applyCol(c){S[c]=(CURSOS&&!ADMIN&&TPLC.includes(c))?mergeTpl(c):(OWN[c]||[]);if(c==='subjects')S.subjects=by(S.subjects,'createdAt');if(c==='summaries')mergeVols()}
 const subjsAct=()=>{const c=cursoAct();return c?S.subjects.filter(s=>(s.concursoIds||[]).includes(c)):S.subjects};
 async function cursoSet(id){await put('settings','main',Object.assign({},strip(cfg()),{cursoAtivo:id}));try{TPLC.forEach(applyCol);scheduleRender()}catch(e){}}
