@@ -388,7 +388,7 @@ function mergeTpl(c){const own=OWN[c]||[];
     if(c==='questions'){const rest=(TPL.questions||[]).filter(x=>!mt[x.subjectId]);add=add.concat(rest)}
     return own.filter(x=>!x._del).concat(add.filter(x=>!ids.has(x.id)).map(x=>Object.assign({},x,{_tpl:1})))}}
 if(!(tplOn()||(CURSOS&&!ADMIN&&['questions'].includes(c))))return own.filter(x=>!x._del);const ids=new Set(own.map(x=>x.id));return own.filter(x=>!x._del).concat((TPL[c]||[]).filter(x=>!ids.has(x.id)).map(x=>Object.assign({},x,{_tpl:1})))}
-function csVis(s){const a=cursoAct();if(!a)return true;const ci=s.concursoIds||[];return !!s._tpl||ci.includes(a)}
+function csVis(s){const a=cursoAct();if(!a)return true;const ci=s.concursoIds||[];if(a==='c_pmdf')return !!s._tpl||(TPL.subjects||[]).some(t=>t.id===s.id);return ci.includes(a)}
 function applyCol(c){S[c]=(CURSOS&&!ADMIN&&TPLC.includes(c))?mergeTpl(c):(OWN[c]||[]);if(CURSOS&&!ADMIN&&cursoAct()){if(c==='subjects'){S[c]=S[c].filter(csVis);['topics','summaries','maps','questions'].forEach(x=>applyCol(x))}else if(c==='topics'){const ok=new Set(mergeTpl('subjects').filter(csVis).map(x=>x.id));S[c]=S[c].filter(t=>!t.subjectId||ok.has(t.subjectId))}}if(c==='subjects')S.subjects=by(S.subjects,'createdAt');if(c==='summaries')mergeVols()}
 const subjsAct=()=>{const c=cursoAct();return c?S.subjects.filter(s=>(s.concursoIds||[]).includes(c)):S.subjects};
 async function cursoSet(id){await put('settings','main',Object.assign({},strip(cfg()),{cursoAtivo:id}));try{TPLC.forEach(applyCol);scheduleRender()}catch(e){}}
