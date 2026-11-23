@@ -393,7 +393,10 @@ function mergeTpl(c){const own=OWN[c]||[];
     return own.filter(x=>!x._del).concat(add.filter(x=>!ids.has(x.id)).map(x=>Object.assign({},x,{_tpl:1})))}}
 if(!(tplOn()||(CURSOS&&!ADMIN&&['questions'].includes(c))))return own.filter(x=>!x._del);const ids=new Set(own.map(x=>x.id));return own.filter(x=>!x._del).concat((TPL[c]||[]).filter(x=>!ids.has(x.id)).map(x=>Object.assign({},x,{_tpl:1})))}
 function csVis(s){const a=cursoAct();if(!a)return true;const ci=s.concursoIds||[];if(a==='c_pmdf')return !!s._tpl||(TPL.subjects||[]).some(t=>t.id===s.id);return ci.includes(a)}
-function applyCol(c){S[c]=(CURSOS&&!ADMIN&&TPLC.includes(c))?mergeTpl(c):(OWN[c]||[]);if(CURSOS&&!ADMIN&&cursoAct()){if(c==='subjects'){S[c]=S[c].filter(csVis);['topics','summaries','maps','questions'].forEach(x=>applyCol(x))}else if(c==='topics'){const ok=new Set(mergeTpl('subjects').filter(csVis).map(x=>x.id));S[c]=S[c].filter(t=>!t.subjectId||ok.has(t.subjectId))}}if(c==='subjects')S.subjects=by(S.subjects,'createdAt');if(c==='summaries')mergeVols()}
+let ASN=null;
+function applyAsn(){if(!ASN||!S.questions)return;S.questions=S.questions.map(q=>{const a=ASN[q.id];return a&&q.assunto!==a[0]?Object.assign({},q,{assunto:a[0],ciclo:a[1],aord:a[2]}):q})}
+(async()=>{try{const r=await fetch('assuntos.json?'+Date.now());if(!r.ok)return;ASN=await r.json();applyAsn();try{scheduleRender()}catch(e){}}catch(e){}})();
+function applyCol(c){S[c]=(CURSOS&&!ADMIN&&TPLC.includes(c))?mergeTpl(c):(OWN[c]||[]);if(CURSOS&&!ADMIN&&cursoAct()){if(c==='subjects'){S[c]=S[c].filter(csVis);['topics','summaries','maps','questions'].forEach(x=>applyCol(x))}else if(c==='topics'){const ok=new Set(mergeTpl('subjects').filter(csVis).map(x=>x.id));S[c]=S[c].filter(t=>!t.subjectId||ok.has(t.subjectId))}}if(c==='subjects')S.subjects=by(S.subjects,'createdAt');if(c==='summaries')mergeVols();if(c==='questions')applyAsn()}
 const subjsAct=()=>{const c=cursoAct();return c?S.subjects.filter(s=>(s.concursoIds||[]).includes(c)):S.subjects};
 async function cursoSet(id){await put('settings','main',Object.assign({},strip(cfg()),{cursoAtivo:id}));try{TPLC.forEach(applyCol);scheduleRender()}catch(e){}}
 const CS_GRP=[['Português, geral e idiomas',['Atualidades','Geografia','História','Inglês','Língua Portuguesa','Redação Oficial']],['Exatas e informática',['Estatística','Informática','Matemática','Matemática Financeira','Raciocínio Lógico']],['Direito e legislação',['Criminologia','Direito Administrativo','Direito Ambiental','Direito Civil','Direito Constitucional','Direito do Trabalho','Direito Empresarial','Direito Financeiro e Orçamento Público','Direito Penal','Direito Previdenciário','Direito Processual Civil','Direito Processual Penal','Direito Tributário','Direitos Humanos','Legislação de Trânsito','Legislação Específica','Medicina Legal']],['Administração, contabilidade e economia',['Administração Financeira e Orçamentária','Administração Geral','Administração Pública','Arquivologia','Auditoria','Contabilidade de Custos','Contabilidade Geral','Contabilidade Pública','Controle Externo','Economia','Ética no Serviço Público','Gestão de Pessoas','Licitações e Contratos']],['Educação (SEE-DF)',['Conhecimentos sobre o Distrito Federal (RIDE)','Currículo em Movimento da Educação Básica do DF','Diretrizes Curriculares Nacionais e Resoluções do CNE','ECA (Estatuto da Criança e do Adolescente)','Educação de Jovens e Adultos (EJA)','Educação em Direitos Humanos','Educação Inclusiva e Lei Brasileira de Inclusão','Gestão Democrática e Regimento Escolar da Rede Pública do DF','Lei Complementar 840/2011 (Regime Jurídico dos Servidores do DF)','Lei nº 5.105/2013 (Carreira Magistério Público do DF)','Lei nº 5.106/2013 (Carreira Assistência à Educação do DF)','Lei Orgânica do Distrito Federal','LDB e Legislação Educacional (CF, arts. 205 a 214)','Plano Distrital de Educação (PDE 2015-2024)','Plano Distrital de Política para as Mulheres','Políticas Públicas para a Educação Básica','Reforma do Ensino Médio (Lei 13.415/2017)','Temas Educacionais e Pedagógicos (planejamento, didática e avaliação)','Uso de Tecnologia na Educação e Informática Básica']]];
@@ -1792,7 +1795,7 @@ V.qcut=(function(){try{return JSON.parse(localStorage.getItem('nx-qcut')||'{}')|
 const qcutSave=()=>{try{localStorage.setItem('nx-qcut',JSON.stringify(V.qcut))}catch(e){}};
 ACT.qcut=b=>{const id=b.dataset.id,v=b.dataset.v;let c=V.qcut[id]||'';c=c.includes(v)?c.replace(v,''):c+v;if(c)V.qcut[id]=c;else delete V.qcut[id];qcutSave();V.keepScroll=true;render()};
 ACT.qcutclr=b=>{delete V.qcut[b.dataset.id];qcutSave();V.keepScroll=true;render()};
-V.qf={};V.qt={};V.qi={};V.qsnap={};
+V.qf={};V.qt={};V.qa={};V.qi={};V.qsnap={};
 const qState=q=>!q.marked?(q.unsure?'dk':'pend'):isOk(q)?'ok':'bad';
 function topOrd(sid){const all=S.topics.filter(t=>t.subjectId===sid),out=[],seen=new Set(),go=pid=>by(all.filter(t=>(t.parentId||'')===pid),'order').forEach(t=>{if(seen.has(t.id))return;seen.add(t.id);out.push(t.id);go(t.id)});go('');all.forEach(t=>{if(!seen.has(t.id)){seen.add(t.id);out.push(t.id)}});return out}
 function qOrder(s,sq){
@@ -1800,12 +1803,13 @@ function qOrder(s,sq){
   const rk=q=>{const k=q.topicId&&get('topics',q.topicId)?q.topicId:'',x=ord.indexOf(k);return k===''?1e9:x<0?1e8:x};
   /* cobertura: 1ª rodada = uma questão de cada conceito (na ordem do conteúdo), 2ª rodada = a segunda de cada, etc. */
   const rnd={},cnt={};
-  sq.slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).forEach(q=>{if(q.jobId&&q.covn>=0){const k=q.jobId+'|'+q.covn;rnd[q.id]=cnt[k]=(cnt[k]||0)+1}});
-  return sq.slice().sort((a,b)=>rk(a)-rk(b)||(rnd[a.id]||1e6)-(rnd[b.id]||1e6)||(a.covn>=0&&b.covn>=0?a.covn-b.covn:0)||(a.createdAt||0)-(b.createdAt||0));
+  sq.slice().sort((a,b)=>qAo(a)-qAo(b)).forEach(q=>{if(q.jobId&&q.covn>=0&&!q.assunto){const k=q.jobId+'|'+q.covn;rnd[q.id]=cnt[k]=(cnt[k]||0)+1}});
+  return sq.slice().sort((a,b)=>rk(a)-rk(b)||(rnd[a.id]||1e6)-(rnd[b.id]||1e6)||(a.covn>=0&&b.covn>=0&&!a.assunto&&!b.assunto?a.covn-b.covn:0)||qAo(a)-qAo(b));
 }
 V.qmix=(()=>{try{return localStorage.getItem('nx-qmix')!=='0'}catch(e){return true}})();
 /* estilo simulado: cada CICLO = 1 questão de cada título do conteúdo (ciclo 1 = a 1ª de cada título, ciclo 2 = a 2ª de cada, etc.) */
-const qMixKey=q=>q.covn>=0?(q.jobId||'')+'|'+q.covn:'t|'+(q.topicId&&get('topics',q.topicId)?q.topicId:'');
+const qAo=q=>q.aord!=null?q.aord:(q.createdAt||0);
+const qMixKey=q=>q.assunto?'a|'+(q.topicId||'')+'|'+q.assunto:q.covn>=0?(q.jobId||'')+'|'+q.covn:'t|'+(q.topicId&&get('topics',q.topicId)?q.topicId:'');
 function qMix(list){
   const keys=[],g={};list.forEach(q=>{const k=qMixKey(q);if(!g[k]){g[k]=[];keys.push(k)}g[k].push(q)});
   const out=[];for(let r=0;out.length<list.length;r++)keys.forEach(k=>{if(g[k][r])out.push(g[k][r])});return out;
@@ -1813,15 +1817,15 @@ function qMix(list){
 ACT.qmix=()=>{V.qmix=!V.qmix;try{localStorage.setItem('nx-qmix',V.qmix?'1':'0')}catch(e){}V.qsnap={};V.qi={};toast(V.qmix?'Modo simulado: ciclos por título do conteúdo':'Ordem por assunto');render()};
 function qBlocks(s,sq){
   if(!sq.length)return'';
-  const f=V.qf[s.id]||'all',tp=V.qt[s.id]||'',cnt={all:sq.length,bad:sq.filter(q=>qState(q)==='bad').length,ok:sq.filter(q=>qState(q)==='ok').length,pend:sq.filter(q=>qState(q)==='pend').length,dk:sq.filter(q=>qState(q)==='dk').length};
+  const f=V.qf[s.id]||'all',tp=V.qt[s.id]||'',asn=V.qa[s.id]||'',cnt={all:sq.length,bad:sq.filter(q=>qState(q)==='bad').length,ok:sq.filter(q=>qState(q)==='ok').length,pend:sq.filter(q=>qState(q)==='pend').length,dk:sq.filter(q=>qState(q)==='dk').length};
   const chips=[['all','Todas'],['bad','❌ Que errei'],['ok','✅ Que acertei'],['dk','🤷 Não sei'],['pend','⏳ Pendentes']].map(([k,l])=>`<button class="chip ${f===k?'sel':''}" data-act="qfil" data-s="${s.id}" data-k="${k}"${k==='dk'&&cnt.dk?' style="border-color:#f5b301;background:rgba(245,179,1,.22)"':''}>${l} (${cnt[k]})</button>`).join('');
   const _to=topOrd(s.id),tids=[...new Set(sq.map(q=>q.topicId&&get('topics',q.topicId)?q.topicId:''))].sort((a,b)=>{const x=a?_to.indexOf(a):1e9,y=b?_to.indexOf(b):1e9;return x-y});
   const tsel=`<select id="qtopic" data-s="${s.id}" class="grow" aria-label="Assunto"><option value="">Todos os assuntos</option>${tids.map(k=>`<option value="${k||'_'}" ${tp===(k||'_')?'selected':''}>${k?(tids.indexOf(k)+1)+'. ':''}${esc(k?get('topics',k).name:'Sem assunto')} (${sq.filter(q=>(q.topicId&&get('topics',q.topicId)?q.topicId:'')===k).length})</option>`).join('')}</select>`;
   let sn=V.qsnap[s.id];
-  if(!sn||sn.f!==f||sn.tp!==tp||sn.n!==sq.length||sn.m!==V.qmix){
-    let list=qOrder(s,sq).filter(q=>(f==='all'||qState(q)===f)&&(!tp||(q.topicId&&get('topics',q.topicId)?q.topicId:'_')===tp));
+  if(!sn||sn.f!==f||sn.tp!==tp||sn.as!==asn||sn.n!==sq.length||sn.m!==V.qmix){
+    let list=qOrder(s,sq).filter(q=>(f==='all'||qState(q)===f)&&(!tp||(q.topicId&&get('topics',q.topicId)?q.topicId:'_')===tp)&&(!asn||(q.assunto||'_')===asn));
     if(V.qmix)list=qMix(list);
-    sn=V.qsnap[s.id]={f,tp,n:sq.length,m:V.qmix,ids:list.map(q=>q.id)};if(!sn.f&&0)V.qi[s.id]=0;
+    sn=V.qsnap[s.id]={f,tp,as:asn,n:sq.length,m:V.qmix,ids:list.map(q=>q.id)};if(!sn.f&&0)V.qi[s.id]=0;
   }
   const arr=sn.ids.map(id=>get('questions',id)).filter(Boolean),tot=arr.length;
   let i=Math.min(Math.max(V.qi[s.id]||0,0),Math.max(tot-1,0));V.qi[s.id]=i;
@@ -1835,7 +1839,9 @@ function qBlocks(s,sq){
   const nav=`<div class="row" style="gap:8px;margin-top:10px"><button class="btn grow" data-act="qgo" data-s="${s.id}" data-i="${i-1}" ${i<=0?'disabled':''}>← Anterior</button><button class="btn pri grow" data-act="qgo" data-s="${s.id}" data-i="${i>=tot-1?0:i+1}" ${tot<2?'disabled':''}>${i>=tot-1&&tot>1?'🔄 Recomeçar ciclo':'Próxima →'}</button></div><button class="btn" data-act="qnext" data-s="${s.id}" style="width:100%;margin-top:8px">⏭ Próxima não respondida</button>`;
   const body=q?`<div id="qanchor"></div><div class="card" style="padding:10px 12px;position:sticky;top:var(--topH,0px);z-index:5"><div class="row" style="align-items:center"><b style="font-size:16px">Questão ${i+1} de ${tot}</b>${rbadge}<span class="grow"></span><button class="btn sm" data-act="qnext" data-s="${s.id}" title="Ir para a próxima questão não respondida" style="margin-right:6px">⏭ Não resp.</button><button class="btn sm ghost" data-act="qhc" title="Ocultar o assunto até você responder" style="margin-right:6px">${V.qhc?'👁 Mostrar assunto':'🙈 Ocultar assunto'}</button><span class="tiny muted">Acertos ${okN} · Erros ${badN} · Não sei ${dkN} · Pendentes ${tot-okN-badN-dkN}</span></div>${rinfo}<div class="bar" style="margin:6px 0"><i style="width:${Math.round((okN+badN)/tot*100)}%"></i></div><div id="qdots" class="scroll-x" style="display:flex;overflow-x:auto;padding:6px 4px">${dots}</div></div>
   <div class="tiny muted" style="margin:8px 2px 0">${qHid(q)?'🙈 Assunto oculto':q.topicId&&get('topics',q.topicId)?esc(get('topics',q.topicId).name):'Sem assunto'}</div>${qCard(q,i+1,tot)}${nav}<button class="btn pri sdfab" data-act="sdopen" data-s="${s.id}">📖 Resumo</button>`:empty(f==='bad'?'Nenhuma questão errada por aqui. 🎉':f==='ok'?'Você ainda não acertou nenhuma.':f==='dk'?'Nenhuma questão marcada como “não sei”.':f==='pend'?'Nenhuma pendente.':'Sem questões neste filtro.');
-  V._tsel=tsel;
+  const _aq=sq.filter(q=>!tp||(q.topicId&&get('topics',q.topicId)?q.topicId:'_')===tp),_an=[];_aq.slice().sort((a,b)=>qAo(a)-qAo(b)).forEach(q=>{const a=q.assunto||'';if(a&&!_an.includes(a))_an.push(a)});
+  const asel=_an.length?`<select id="qassunto" data-s="${s.id}" class="grow" aria-label="Assunto detalhado" style="margin-top:6px"><option value="">Todos os assuntos detalhados</option>${_an.map(a=>`<option value="${esc(a)}" ${asn===a?'selected':''}>${esc(a)} (${_aq.filter(q=>q.assunto===a).length})</option>`).join('')}</select>`:'';
+  V._tsel=tsel+asel;
   const FL={all:'Todas',bad:'Que errei',ok:'Que acertei',dk:'Não sei',pend:'Pendentes'},fl=FL[V.qf[s.id]||'all']||'Todas',opn=!!V.qfp;
   const cov=sq.some(x=>x.jobId)?`<button class="btn sm" data-act="qcov" data-s="${s.id}" title="Ordenar: uma questão de cada conceito primeiro">Conteúdo</button>`:'';
   return `<div class="sec"><div class="row" style="margin:6px 0 8px;gap:8px"><button class="btn sm ${opn?'pri':''}" data-act="qfpan" aria-expanded="${opn}">Filtros: ${fl}${V.qmix?' · Simulado':''} ${opn?'▴':'▾'}</button></div>${opn?`<div class="card" style="padding:12px;margin-bottom:10px"><div class="tiny muted" style="margin-bottom:6px">Mostrar</div><div class="row" style="flex-wrap:wrap;gap:6px">${chips}</div><div class="tiny muted" style="margin:12px 0 6px">Ordem</div><div class="row" style="flex-wrap:wrap;gap:6px">${cov}<button class="btn sm ${V.qmix?'pri':''}" data-act="qmix" title="Simulado: ciclos de 1 questão de cada título do conteúdo">Simulado</button></div></div>`:''}${body}</div>`;
@@ -1924,7 +1930,7 @@ ACT.qgo=b=>{
   const a=document.getElementById('qanchor'),t=document.querySelector('.top');
   if(a)window.scrollTo({top:Math.max(0,a.getBoundingClientRect().top+window.scrollY-(t?t.offsetHeight:0)-4),behavior:'auto'});
 };
-document.addEventListener('change',e=>{if(e.target.id==='qtopic'){V.qsc=true;V.qt[e.target.dataset.s]=e.target.value;V.qi[e.target.dataset.s]=0;V.qsnap[e.target.dataset.s]=null;render()}});
+document.addEventListener('change',e=>{if(e.target.id==='qassunto'){V.qsc=true;const s=e.target.dataset.s;V.qa[s]=e.target.value;V.qi[s]=0;V.qsnap[s]=null;render();return}if(e.target.id==='qtopic'){V.qsc=true;V.qa[e.target.dataset.s]='';V.qt[e.target.dataset.s]=e.target.value;V.qi[e.target.dataset.s]=0;V.qsnap[e.target.dataset.s]=null;render()}});
 ACT.qfil=b=>{V.qf[b.dataset.s]=b.dataset.k;V.qi[b.dataset.s]=0;V.qsnap[b.dataset.s]=null;render()};
 ACT.qblk=b=>{V.qopen[b.dataset.k]=!V.qopen[b.dataset.k];render()};
 ACT.qall=b=>{const sid=b.dataset.s,ks=[...new Set(S.questions.filter(q=>q.subjectId===sid).map(q=>sid+':'+(q.topicId&&get('topics',q.topicId)?q.topicId:'')))],any=ks.some(k=>V.qopen[k]);ks.forEach(k=>V.qopen[k]=!any);render()};
