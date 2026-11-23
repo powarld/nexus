@@ -395,7 +395,7 @@ if(!(tplOn()||(CURSOS&&!ADMIN&&['questions'].includes(c))))return own.filter(x=>
 function csVis(s){const a=cursoAct();if(!a)return true;const ci=s.concursoIds||[];if(a==='c_pmdf')return !!s._tpl||(TPL.subjects||[]).some(t=>t.id===s.id);return ci.includes(a)}
 let ASN=null;
 function applyAsn(){if(!ASN||!S.questions)return;S.questions=S.questions.map(q=>{const a=ASN[q.id]||ASN[q.id.replace(/^x/,'')];return a&&(q.assunto!==a[0]||q.aord!==a[2])?Object.assign({},q,{assunto:a[0],ciclo:a[1],aord:a[2]}):q})}
-(async()=>{try{const r=await fetch('assuntos.json?'+Date.now());if(!r.ok)return;ASN=await r.json();applyAsn();try{scheduleRender()}catch(e){}}catch(e){}})();
+(async()=>{try{const r=await fetch('assuntos.json');if(!r.ok)return;ASN=await r.json();applyAsn();try{scheduleRender()}catch(e){}}catch(e){}})();
 function applyCol(c){S[c]=(CURSOS&&!ADMIN&&TPLC.includes(c))?mergeTpl(c):(OWN[c]||[]);if(CURSOS&&!ADMIN&&cursoAct()){if(c==='subjects'){S[c]=S[c].filter(csVis);['topics','summaries','maps','questions'].forEach(x=>applyCol(x))}else if(c==='topics'){const ok=new Set(mergeTpl('subjects').filter(csVis).map(x=>x.id));S[c]=S[c].filter(t=>!t.subjectId||ok.has(t.subjectId))}}if(c==='subjects')S.subjects=by(S.subjects.filter(x=>!/^sj_af_/.test(x.id)),'createdAt');if(c==='summaries')mergeVols();if(c==='questions')applyAsn()}
 const subjsAct=()=>{const c=cursoAct();return c?S.subjects.filter(s=>(s.concursoIds||[]).includes(c)):S.subjects};
 async function cursoSet(id){await put('settings','main',Object.assign({},strip(cfg()),{cursoAtivo:id}));try{TPLC.forEach(applyCol);scheduleRender()}catch(e){}}
@@ -963,7 +963,7 @@ function saRoot(sb,uid){
   const lis=[];
   const refreshAll=()=>lis.forEach(f=>f());
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshAll()});
-  setInterval(()=>{if(document.visibilityState==='visible')refreshAll()},60000);
+  setInterval(()=>{if(document.visibilityState==='visible')refreshAll()},300000);
   return{collection:path=>{const k=parse(path);return{
     doc:id=>({
       async get(){const d=await one(k,id);return{exists:d!=null,data:()=>d}},
@@ -1186,7 +1186,7 @@ function rkMonth(all,me){
   const cards=L.map(x=>{const you=x.id===me,cells=Array.from({length:wd},()=>'<div></div>').join('')+Array.from({length:nd},(_,i)=>cell(i+1,x)).join('');
     return `<div class="card" style="padding:12px;margin:0 0 10px"><div class="row"><b class="grow" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name||'Usuário')}${you?' <span class="tiny muted">(você)</span>':''}</b><span class="tiny muted">${cnt(x)} dia${cnt(x)===1?'':'s'} no mês</span></div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px">${hdr}${cells}</div></div>`}).join('');
   return `<div class="sec" style="margin-top:14px"><div class="row" style="margin:0 0 8px"><h2 class="grow" style="font-size:16px;text-transform:capitalize">Estudo no mês · ${esc(nmM)}</h2><button class="btn sm" data-act="rkmes" data-d="-1" ${off<=-2?'disabled':''}>←</button><button class="btn sm" data-act="rkmes" data-d="1" ${off>=0?'disabled':''}>→</button></div>${cards}<div class="tiny muted" style="margin-top:-2px">Mostra os últimos 70 dias de cada pessoa, a partir da versão que registra os dias. Passe o mouse (ou toque) no dia para ver tempo e questões. Desc. = descanso · Falhou = dia sem estudo sem descanso disponível na semana.</div></div>`}
-setTimeout(()=>{try{rkSync(true)}catch(e){}},12000);setInterval(()=>{try{rkSync()}catch(e){}},120000);
+setTimeout(()=>{try{rkSync(true)}catch(e){}},12000);setInterval(()=>{try{if(document.visibilityState==='visible')rkSync()}catch(e){}},300000);
 
 VIEWS.dash=()=>{
   if(cfg().widgets&&!cfg().wqmat&&!V.wmig){V.wmig=1;const w=cfg().widgets.slice();if(!w.includes('qmat')){const i=w.indexOf('anki');w.splice(i>=0?i+1:w.length,0,'qmat')}put('settings','main',Object.assign({},strip(cfg()),{widgets:w,wqmat:1}))}
