@@ -269,6 +269,9 @@ kbd.kk{display:inline-block;font:600 11px/1 ui-monospace,monospace;padding:3px 6
 <div id="toast" class="toast" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/turndown@7.1.2/dist/turndown.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/turndown-plugin-gfm@1.0.2/dist/turndown-plugin-gfm.js"></script>
+
 
 <style>.tpill{display:flex;align-items:center;gap:6px;padding:3px 4px 3px 10px;border-radius:999px;background:var(--surface2,var(--surface));color:var(--fg);border:1px solid var(--line);font-variant-numeric:tabular-nums;flex:none}
 .tpill b{font-size:14px;letter-spacing:.2px}.tpill button{border:0;background:var(--line,#8883);color:inherit;width:26px;height:26px;border-radius:50%;font-size:11px;cursor:pointer;padding:0}
@@ -484,6 +487,87 @@ function md(src){
   box.querySelectorAll('table').forEach(tb=>{if(/jurisprud|julgad|s[úu]mula|preced|\bSTF\b|\bSTJ\b|\bADI|tese/i.test(((tb.querySelector('thead')||tb.rows[0]||{}).textContent)||''))tb.classList.add('jur')});
   return box.innerHTML;
 }
+/* ---- editor visual de resumos (estilo Word): converte Markdown <-> HTML ---- */
+(function(G){
+const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toHtml(src,mdFn){
+  const cms=[];
+  const t=String(src||'').replace(/<!--([\s\S]*?)-->/g,(m,x)=>{cms.push(x);return '\n\nRTECM'+(cms.length-1)+'X\n\n'});
+  const box=document.createElement('div');box.innerHTML=mdFn(t);
+  box.querySelectorAll('p').forEach(p=>{const m=/^RTECM(\d+)X$/.exec(p.textContent.trim());if(m){const d=document.createElement('div');d.className='rte-cm';d.setAttribute('contenteditable','false');d.setAttribute('data-i',m[1]);d.textContent='— marcador (não apagar) —';p.replaceWith(d)}});
+  box.querySelectorAll('a.wl').forEach(a=>a.removeAttribute('data-act'));
+  return {html:box.innerHTML,cms};
+}
+function toMd(root,cms,TD,gfm){
+  const td=new TD({headingStyle:'atx',bulletListMarker:'-',codeBlockStyle:'fenced',emDelimiter:'*',strongDelimiter:'**',br:'',hr:'---'});
+  if(gfm)td.use(gfm);
+  td.addRule('mark',{filter:'mark',replacement:c=>c.trim()?'=='+c+'==':c});
+  td.addRule('wl',{filter:n=>n.nodeName==='A'&&n.classList.contains('wl'),replacement:(c,n)=>'[['+(n.getAttribute('data-t')||n.textContent)+']]'});
+  td.addRule('cm',{filter:n=>n.nodeName==='DIV'&&n.classList.contains('rte-cm'),replacement:(c,n)=>'\n\n<!--'+(cms[+n.getAttribute('data-i')]||'')+'-->\n\n'});
+  td.addRule('callout',{filter:n=>n.nodeName==='DIV'&&n.classList.contains('callout'),replacement:(c,n)=>{
+    const ty=((n.className.match(/c-(\w+)/)||[])[1]||'note'),ct=n.querySelector('.ct'),cb=n.querySelector('.cb');
+    const body=cb?td.turndown(cb.innerHTML).trim():'';
+    const lines=['[!'+ty+'] '+(ct?td.turndown(ct.innerHTML).replace(/\s*\n\s*/g,' ').trim():'')].concat(body?body.split('\n'):[]);
+    return '\n\n'+lines.map(l=>l?'> '+l:'>').join('\n')+'\n\n'}});
+  return td.turndown(root.innerHTML).replace(/\n{3,}/g,'\n\n').trim()+'\n';
+}
+G.RTE={toHtml,toMd};
+})(typeof window!=='undefined'?window:globalThis);
+(function(){
+const st=document.createElement('style');st.textContent=`
+.rte-bar{position:sticky;top:0;z-index:3;display:flex;flex-wrap:wrap;gap:4px;padding:6px;margin:6px 0 0;background:var(--surface2,#8882);border:1.5px solid var(--line,#8884);border-bottom:0;border-radius:10px 10px 0 0}
+.rte-bar button{min-width:38px;height:36px;padding:0 9px;border:1px solid var(--line,#8884);background:var(--surface,#fff);color:var(--fg);border-radius:8px;font-weight:700;font-size:14px;cursor:pointer}
+.rte-bar button.rte-md{margin-left:auto}
+.rte-ed{min-height:280px;max-height:58vh;overflow:auto;padding:12px 14px;border:1.5px solid var(--line,#8884);border-radius:0 0 10px 10px;background:var(--surface,#fff);outline:none;-webkit-user-select:text;user-select:text}
+.rte-ed:focus{border-color:var(--accent)}
+.rte-ed .rte-cm{opacity:.5;font-size:12px;text-align:center;border:1px dashed var(--line,#8886);border-radius:8px;padding:4px;margin:10px 0;user-select:none}
+.rte-ed table{display:table;width:100%}.rte-ed td,.rte-ed th{border:1px solid var(--line,#8884);padding:6px 8px;min-width:60px}
+`;document.head.appendChild(st);
+const BT=[['bold','B','Negrito'],['italic','I','Itálico'],['mark','Marca-texto','Marca-texto'],['h2','T2','Título'],['h3','T3','Subtítulo'],['p','¶','Texto normal'],['ul','• Lista','Lista'],['ol','1. Lista','Lista numerada'],['quote','❝','Citação'],['hr','—','Linha'],['table','Tabela','Inserir tabela'],['undo','↶','Desfazer'],['redo','↷','Refazer']];
+const live=new Set();
+function build(ta){
+  if(ta.dataset.rteDone||!window.TurndownService||typeof md!=='function')return;ta.dataset.rteDone='1';
+  const wrap=document.createElement('div');
+  const bar=document.createElement('div');bar.className='rte-bar';
+  bar.innerHTML=BT.map(b=>`<button type="button" data-r="${b[0]}" title="${b[2]}" ${b[0]==='bold'?'style="font-weight:900"':b[0]==='italic'?'style="font-style:italic"':''}>${b[1]}</button>`).join('')+'<button type="button" class="rte-md" data-r="md" title="Alternar entre editor e texto Markdown">Markdown</button>';
+  const ed=document.createElement('div');ed.className='rte-ed md';ed.contentEditable='true';ed.spellcheck=true;
+  let cms=[],dirty=false,raw=false,tm=null;
+  const gfm=window.turndownPluginGfm&&window.turndownPluginGfm.gfm;
+  const load=()=>{const r=RTE.toHtml(ta.value,md);cms=r.cms;ed.innerHTML=r.html||'<p><br></p>'};
+  const sync=()=>{if(!dirty||raw)return;try{ta.value=RTE.toMd(ed,cms,TurndownService,gfm)}catch(e){console.error(e)}};
+  const touch=()=>{dirty=true;clearTimeout(tm);tm=setTimeout(sync,400)};
+  ta.style.display='none';ta.parentNode.insertBefore(wrap,ta);wrap.appendChild(bar);wrap.appendChild(ed);
+  load();
+  const q=s=>{const x=getSelection();return x&&x.rangeCount&&ed.contains(x.anchorNode)?x:null};
+  const cmd=(c,v)=>{ed.focus();document.execCommand(c,false,v);touch()};
+  bar.addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault()});
+  bar.addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(!b)return;const r=b.dataset.r;
+    if(r==='md'){if(!raw){sync();raw=true;ed.style.display='none';ta.style.display='';ta.style.minHeight='280px';ta.style.fontFamily='ui-monospace,monospace';ta.style.fontSize='13px';ta.oninput=()=>{dirty=false};b.textContent='Editor';bar.querySelectorAll('button:not(.rte-md)').forEach(x=>x.style.display='none')}
+      else{raw=false;ta.style.display='none';ta.oninput=null;load();ed.style.display='';b.textContent='Markdown';bar.querySelectorAll('button:not(.rte-md)').forEach(x=>x.style.display='')}return}
+    ed.focus();
+    if(r==='bold'||r==='italic'||r==='undo'||r==='redo')return cmd(r);
+    if(r==='h2'||r==='h3')return cmd('formatBlock',r.toUpperCase());
+    if(r==='p')return cmd('formatBlock','P');
+    if(r==='ul')return cmd('insertUnorderedList');if(r==='ol')return cmd('insertOrderedList');
+    if(r==='quote')return cmd('formatBlock','BLOCKQUOTE');if(r==='hr')return cmd('insertHorizontalRule');
+    if(r==='table')return cmd('insertHTML','<table><thead><tr><th>Coluna 1</th><th>Coluna 2</th></tr></thead><tbody><tr><td>&nbsp;</td><td>&nbsp;</td></tr></tbody></table><p><br></p>');
+    if(r==='mark'){const s=q();if(!s)return;let n=s.anchorNode;n=n.nodeType===1?n:n.parentNode;const m=n.closest&&n.closest('mark');
+      if(m&&ed.contains(m)){m.replaceWith(...m.childNodes);touch();return}
+      if(s.isCollapsed)return;const d=document.createElement('div');d.appendChild(s.getRangeAt(0).cloneContents());return cmd('insertHTML','<mark>'+d.innerHTML+'</mark>')}
+  });
+  ed.addEventListener('input',touch);
+  ed.addEventListener('paste',e=>{const cd=e.clipboardData;if(!cd)return;e.preventDefault();const h=cd.getData('text/html'),t=cd.getData('text/plain');
+    if(h&&window.DOMPurify){const c=DOMPurify.sanitize(h,{ALLOWED_TAGS:['p','br','b','strong','i','em','u','mark','h1','h2','h3','h4','ul','ol','li','table','thead','tbody','tr','th','td','blockquote','hr','a'],ALLOWED_ATTR:['href']});document.execCommand('insertHTML',false,c)}
+    else document.execCommand('insertText',false,t);touch()});
+  ed.addEventListener('click',e=>{if(e.target.closest('a'))e.preventDefault()});
+  wrap._sync=sync;live.add(wrap);
+}
+function scan(root){(root.querySelectorAll?root.querySelectorAll('textarea[data-rich]'):[]).forEach(build)}
+new MutationObserver(ms=>{ms.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1)scan(n)}))}).observe(document.documentElement,{childList:true,subtree:true});
+document.addEventListener('submit',()=>{live.forEach(w=>{if(!w.isConnected){live.delete(w);return}w._sync()})},true);
+scan(document);
+})();
+
 function mdFix(s){const L=String(s||'').replace(/\r/g,'').split('\n'),o=[];const isT=x=>/^\s*\|.*\|?\s*$/.test(x),isB=x=>!x.trim();
   L.forEach((x,i)=>{const p=o.length?o[o.length-1]:'';
     if(isT(x)&&!isT(p)&&!isB(p))o.push('');           // tabela precisa de linha em branco antes
@@ -575,7 +659,7 @@ const ENT={
 function fieldHtml(f,v,doc){
   const n='name="'+f.k+'"',val=v==null?'':v,r=f.req?'required':'';
   switch(f.t){
-    case 'area':return `<label>${esc(f.l)}</label><textarea ${n} rows="${f.rows||5}" ${r} ${f.mono?'style="font-family:ui-monospace,monospace;font-size:13px"':''}>${esc(val)}</textarea>`;
+    case 'area':return `<label>${esc(f.l)}</label><textarea ${n} ${f.k==='md'?'data-rich="1"':''} rows="${f.rows||5}" ${r} ${f.mono?'style="font-family:ui-monospace,monospace;font-size:13px"':''}>${esc(val)}</textarea>`;
     case 'steps':return `<label>${esc(f.l)}</label><textarea ${n} rows="${f.rows||5}">${esc((Array.isArray(v)?v:[]).map(x=>x.t).join('\n'))}</textarea>`;
     case 'tags':return `<label>${esc(f.l)}</label><input ${n} value="${esc((Array.isArray(v)?v:[]).join(', '))}">`;
     case 'select':{const o=typeof f.o==='function'?f.o():f.o;const cur=f.bool?(v===false?'0':'1'):String(val);return `<label>${esc(f.l)}</label><select ${n}>${o.map(([a,b])=>`<option value="${esc(a)}" ${String(a)===cur?'selected':''}>${esc(b)}</option>`).join('')}</select>`}
@@ -1184,7 +1268,7 @@ ACT.secpick=b=>{
 ACT.secedit=b=>{
   const c=b.dataset.c,d=get(c,b.dataset.id),k=+b.dataset.k,{L,secs}=mdSecs(d.md),s=secs[k];if(!s)return;
   const body=L.slice(s.s,s.e).join('\n').replace(/^\n+|\n+$/g,'');
-  sheet('Editar: '+clip(s.title,40),`<div class="tiny muted" style="margin-bottom:6px">Só o texto desta seção (até o próximo título). Markdown permitido.</div>${s.i>=0?`<label class="tiny muted">Título</label><input name="ttl" value="${esc(s.title)}">`:''}<textarea name="body" rows="14" style="width:100%;min-height:260px">${esc(body)}</textarea>`,async f=>{
+  sheet('Editar: '+clip(s.title,40),`<div class="tiny muted" style="margin-bottom:6px">Só o texto desta seção (até o próximo título). Markdown permitido.</div>${s.i>=0?`<label class="tiny muted">Título</label><input name="ttl" value="${esc(s.title)}">`:''}<textarea name="body" data-rich="1" rows="14" style="width:100%;min-height:260px">${esc(body)}</textarea>`,async f=>{
     const cur=get(c,d.id),m2=mdSecs(cur.md),s2=m2.secs[k];if(!s2||s2.title!==s.title){toast('O resumo mudou; reabra a seção.');return false}
     const head=s2.i>=0?[ '#'.repeat(s2.lvl)+' '+(f.ttl||s2.title).trim() ]:[];
     const nb=String(f.body||'').replace(/\s+$/,'');
