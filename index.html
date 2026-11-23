@@ -1158,6 +1158,7 @@ function rkStats(){
 async function rkSync(force){
   try{if(!RDB||!PFID)return;const now=Date.now();if(!force&&V.rk.t&&now-V.rk.t<60000)return;if(!V.loaded.sessions||!V.loaded.questions)return;V.rk.t=now;
     await RDB.collection('rank').doc(PFID).set(rkStats())}catch(e){console.error('rank',e)}}
+function rkSoon(){try{if(!RDB||!PFID||V.rkTm)return;const w=Math.max(1500,30000-(Date.now()-(V.rkLast||0)));V.rkTm=setTimeout(()=>{V.rkTm=0;try{const st=rkStats(),k=JSON.stringify([st.q,st.qok,st.wq,st.wqok,st.min,st.wmin,st.sk]);if(k===V.rkKey)return;V.rkKey=k;V.rkLast=Date.now();rkSync(true)}catch(e){}},w)}catch(e){}}
 function rkListen(){try{if(!RDB)return;RDB.collection('rank').onSnapshot(sn=>{V.rk.docs=sn.docs.map(d=>Object.assign({id:d.id},d.data()));if(ADMIN){const X=['maria cristina','usuário de teste','usuario de teste'];V.rk.docs.filter(d=>d.id!==PFID&&X.includes(String(d.name||'').trim().toLowerCase())&&!(V.rkDel||(V.rkDel={}))[d.id]).forEach(d=>{V.rkDel[d.id]=1;RDB.collection('rank').doc(d.id).delete().then(()=>{V.rk.docs=V.rk.docs.filter(x=>x.id!==d.id);scheduleRender()}).catch(e=>{console.error(e)})})}if(V.view==='rank')scheduleRender()},e=>console.error('rank',e))}catch(e){console.error(e)}}
 VIEWS.rank=()=>{
   rkSync();
@@ -1962,7 +1963,7 @@ document.addEventListener('change',e=>{if(e.target.id==='qassunto'){V.qsc=true;c
 ACT.qfil=b=>{V.qf[b.dataset.s]=b.dataset.k;V.qi[b.dataset.s]=0;V.qsnap[b.dataset.s]=null;render()};
 ACT.qblk=b=>{V.qopen[b.dataset.k]=!V.qopen[b.dataset.k];render()};
 ACT.qall=b=>{const sid=b.dataset.s,ks=[...new Set(S.questions.filter(q=>q.subjectId===sid).map(q=>sid+':'+(q.topicId&&get('topics',q.topicId)?q.topicId:'')))],any=ks.some(k=>V.qopen[k]);ks.forEach(k=>V.qopen[k]=!any);render()};
-ACT.qans=b=>{const q=get('questions',b.dataset.id);if(!q||q.marked)return;patch('questions',q.id,{marked:b.dataset.v,date:today()});render();const gg=String(q.gab||'').trim().toUpperCase()[0];if(gg&&b.dataset.v!==gg&&!q.expl)qExplGen(q.id)};
+ACT.qans=b=>{const q=get('questions',b.dataset.id);if(!q||q.marked)return;patch('questions',q.id,{marked:b.dataset.v,date:today()});rkSoon();render();const gg=String(q.gab||'').trim().toUpperCase()[0];if(gg&&b.dataset.v!==gg&&!q.expl)qExplGen(q.id)};
 ACT.qredo=b=>{const q=get('questions',b.dataset.id);if(q){patch('questions',q.id,{marked:'',date:'',unsure:''});delete V.qcut[q.id];qcutSave();render()}};
 ACT.qdk=b=>{const q=get('questions',b.dataset.id);if(!q||q.marked)return;V.qrev=q.id;patch('questions',q.id,{unsure:today()});render();if(!q.expl)qExplGen(q.id)};
 ACT.qsetgab=b=>{const q=get('questions',b.dataset.id);if(q){patch('questions',q.id,{gab:b.dataset.v});render()}};
