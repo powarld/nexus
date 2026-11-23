@@ -394,7 +394,7 @@ function mergeTpl(c){const own=OWN[c]||[];
 if(!(tplOn()||(CURSOS&&!ADMIN&&['questions'].includes(c))))return own.filter(x=>!x._del);const ids=new Set(own.map(x=>x.id));return own.filter(x=>!x._del).concat((TPL[c]||[]).filter(x=>!ids.has(x.id)).map(x=>Object.assign({},x,{_tpl:1})))}
 function csVis(s){const a=cursoAct();if(!a)return true;const ci=s.concursoIds||[];if(a==='c_pmdf')return !!s._tpl||(TPL.subjects||[]).some(t=>t.id===s.id);return ci.includes(a)}
 let ASN=null;
-function applyAsn(){if(!ASN||!S.questions)return;S.questions=S.questions.map(q=>{const a=ASN[q.id];return a&&q.assunto!==a[0]?Object.assign({},q,{assunto:a[0],ciclo:a[1],aord:a[2]}):q})}
+function applyAsn(){if(!ASN||!S.questions)return;S.questions=S.questions.map(q=>{const a=ASN[q.id]||ASN[q.id.replace(/^x/,'')];return a&&(q.assunto!==a[0]||q.aord!==a[2])?Object.assign({},q,{assunto:a[0],ciclo:a[1],aord:a[2]}):q})}
 (async()=>{try{const r=await fetch('assuntos.json?'+Date.now());if(!r.ok)return;ASN=await r.json();applyAsn();try{scheduleRender()}catch(e){}}catch(e){}})();
 function applyCol(c){S[c]=(CURSOS&&!ADMIN&&TPLC.includes(c))?mergeTpl(c):(OWN[c]||[]);if(CURSOS&&!ADMIN&&cursoAct()){if(c==='subjects'){S[c]=S[c].filter(csVis);['topics','summaries','maps','questions'].forEach(x=>applyCol(x))}else if(c==='topics'){const ok=new Set(mergeTpl('subjects').filter(csVis).map(x=>x.id));S[c]=S[c].filter(t=>!t.subjectId||ok.has(t.subjectId))}}if(c==='subjects')S.subjects=by(S.subjects,'createdAt');if(c==='summaries')mergeVols();if(c==='questions')applyAsn()}
 const subjsAct=()=>{const c=cursoAct();return c?S.subjects.filter(s=>(s.concursoIds||[]).includes(c)):S.subjects};
