@@ -923,6 +923,20 @@ function saRecoveryUI(sb){
     document.body.appendChild(d)})
 }
 let NXSYNC=(String(location.hash).match(/^#nxsync=([\w.\-]+)$/)||[])[1]||'';if(!NXSYNC){try{NXSYNC=sessionStorage.getItem('nx-sync')||'';sessionStorage.removeItem('nx-sync')}catch(e){}}
+/* cache local + sincronização incremental (baixa só o que mudou; reduz a transferência do Supabase) */
+const NXC={};
+const nxIdb=()=>new Promise((res,rej)=>{const r=indexedDB.open('nx-cache',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+async function nxIdbGet(k){try{const d=await nxIdb();return await new Promise(res=>{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null)})}catch(e){return null}}
+function nxIdbSet(k,v){try{nxIdb().then(d=>{d.transaction('kv','readwrite').objectStore('kv').put(v,k)}).catch(()=>{})}catch(e){}}
+async function nxSync(listQ,k,c){
+  const PG=1000,full=!c.since||Date.now()-(c.full||0)>6*3600e3;let n=0,mx=full?null:c.since;
+  const since=full?null:new Date(new Date(c.since).getTime()-300000).toISOString();
+  if(full)c.rows2={};
+  for(let off=0;;off+=PG){let q=listQ(k);if(!full)q=q.gt('updated_at',since);q=full?q.order('id'):q.order('updated_at');const r=await q.range(off,off+PG-1);if(r.error)throw r.error;const d=r.data||[];
+    d.forEach(x=>{(full?c.rows2:c.rows)[x.id]=x.data;n++;if(x.updated_at&&(!mx||x.updated_at>mx))mx=x.updated_at});
+    if(d.length<PG)break}
+  if(full){c.rows=c.rows2;delete c.rows2;c.full=Date.now();c.since=mx||new Date(0).toISOString();return true}
+  if(mx)c.since=mx;return n>0}
 async function saImportSync(sb,uid,em){
   try{const k=NXSYNC;try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
     const bin=Uint8Array.from(atob(k.slice(2).replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));let u8=bin;
@@ -938,7 +952,7 @@ async function saImportSync(sb,uid,em){
 function saRoot(sb,uid){
   const parse=p=>{if(p.startsWith('pmdf_'))return{t:'tpl',c:p.slice(5)};if(p==='rank')return{t:'rank'};const m=p.match(/^data\/users\/[^/]+\/(.+)$/);return{t:'docs',c:m?m[1]:p}};
   const nowIso=()=>new Date().toISOString();
-  const listQ=k=>{let q=sb.from(k.t).select(k.t==='rank'?'id,data':'id,data');if(k.t==='docs')q=q.eq('coll',k.c).eq('user_id',uid);else if(k.t==='tpl')q=q.eq('coll',k.c);return q};
+  const listQ=k=>{let q=sb.from(k.t).select(k.t==='rank'?'id,data':'id,data,updated_at');if(k.t==='docs')q=q.eq('coll',k.c).eq('user_id',uid);else if(k.t==='tpl')q=q.eq('coll',k.c);return q};
   const rowFor=(k,id,data)=>k.t==='docs'?{user_id:uid,coll:k.c,id,data,updated_at:nowIso()}:k.t==='tpl'?{coll:k.c,id,data,updated_at:nowIso()}:{id,user_id:uid,data,updated_at:nowIso()};
   const conflict=k=>k.t==='docs'?'user_id,coll,id':k.t==='tpl'?'coll,id':'id';
   const one=async(k,id)=>{let q=sb.from(k.t).select('data').eq('id',id);if(k.t==='docs')q=q.eq('coll',k.c).eq('user_id',uid);else if(k.t==='tpl')q=q.eq('coll',k.c);const r=await q.maybeSingle();if(r.error)throw r.error;return r.data?r.data.data:null};
@@ -957,9 +971,23 @@ function saRoot(sb,uid){
       async update(patch){let cur=await one(k,id);if(cur==null)cur={};cur=clean(cur);for(const key of Object.keys(patch||{})){const v=patch[key];if(v&&v.__delete__)delPath(cur,key);else setPath(cur,key,clean({x:v}).x)}applyDel(cur);const r=await sb.from(k.t).upsert(rowFor(k,id,cur),{onConflict:conflict(k)});if(r.error)throw r.error},
       async delete(){let q=sb.from(k.t).delete().eq('id',id);if(k.t==='docs')q=q.eq('coll',k.c).eq('user_id',uid);else if(k.t==='tpl')q=q.eq('coll',k.c);const r=await q;if(r.error)throw r.error}
     }),
-    onSnapshot(cb,err){let alive=true;const emit=async()=>{if(!alive)return;try{const r=await listQ(k);if(r.error)throw r.error;cb({docs:(r.data||[]).map(x=>({id:x.id,data:()=>x.data}))})}catch(e){if(err)err(e)}};
+    onSnapshot(cb,err){let alive=true;const ck=uid+'|'+path;
+      const out=c=>({docs:Object.keys(c.rows).map(id=>({id,data:(d=>()=>d)(c.rows[id])}))});
+      let busy=false,again=false,forceN=false;
+      const emit=async(force)=>{if(busy){again=true;if(force)forceN=true;return}busy=true;try{await emit0(force)}finally{busy=false;if(again){again=false;const f=forceN;forceN=false;emit(f)}}};
+      const emit0=async(force)=>{if(!alive)return;try{
+        if(k.t==='rank'){const r=await listQ(k);if(r.error)throw r.error;cb({docs:(r.data||[]).map(x=>({id:x.id,data:()=>x.data}))});return}
+        let c=NXC[ck];if(!c){c=NXC[ck]=(await nxIdbGet(ck))||{rows:{},since:null,full:0};if(c.since&&alive)cb(out(c))}
+        if(force)c.full=0;
+        const ch=await nxSync(listQ,k,c);if(!alive)return;if(ch)nxIdbSet(ck,{rows:c.rows,since:c.since,full:c.full});cb(out(c))}catch(e){if(err)err(e)}};
       emit();lis.push(emit);
-      try{const ch=sb.channel('c_'+path+'_'+Math.random().toString(36).slice(2,7)).on('postgres_changes',{event:'*',schema:'public',table:k.t,...(k.t==='docs'?{filter:'user_id=eq.'+uid}:{})},p=>{const row=p.new&&p.new.id?p.new:p.old;if(!row)return;if(k.t!=='rank'&&row.coll&&row.coll!==k.c)return;emit()}).subscribe()}catch(e){}
+      try{const chn=sb.channel('c_'+path+'_'+Math.random().toString(36).slice(2,7)).on('postgres_changes',{event:'*',schema:'public',table:k.t,...(k.t==='docs'?{filter:'user_id=eq.'+uid}:{})},p=>{const row=p.new&&p.new.id?p.new:p.old;if(!row)return;if(k.t!=='rank'&&row.coll&&row.coll!==k.c)return;
+        if(k.t==='rank'){emit();return}
+        const c=NXC[ck];if(!c){emit();return}
+        if(p.eventType==='DELETE'){if(!row.coll){emit(true);return}delete c.rows[row.id]}
+        else if(p.new&&p.new.data){c.rows[p.new.id]=p.new.data;if(p.new.updated_at&&(!c.since||p.new.updated_at>c.since))c.since=p.new.updated_at}
+        else{emit();return}
+        nxIdbSet(ck,{rows:c.rows,since:c.since,full:c.full});cb(out(c))}).subscribe()}catch(e){}
       return()=>{alive=false}}
   }}}
 }
