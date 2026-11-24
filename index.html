@@ -1725,7 +1725,7 @@ function regSheet(m,after){
       const tr=get('metas',mt.trilha);if(tr&&!tr.inicio){const TL=S.metas.filter(x=>x.kind==='trilha').sort((p,q)=>(p.num||p.order||0)-(q.num||q.order||0)),i=TL.findIndex(x=>x.id===tr.id);await patch('metas',tr.id,{inicio:(i>=0&&mtkUnl(TL).ef[i])||today()})}
       if(T.meta===mt.id){T={running:false,start:0,acc:0,subj:T.subj,meta:''};saveT()}
       toast('Atividade '+(mt.cod||'')+' concluída em Planejamento')}
-    after&&after();render();pillUpdate()},{save:'Registrar',nofocus:true});
+    T={running:false,start:0,acc:0,subj:sj,meta:''};saveT();after&&after();render();pillUpdate()},{save:'Registrar',nofocus:true});
   setTimeout(rgNote,30)}
 document.addEventListener('change',e=>{const t=e.target;if(t&&t.form&&t.form.id==='shForm'&&t.name==='tp')setTimeout(rgQs,0);if(t&&t.form&&t.form.id==='shForm'&&(t.name==='sj'||t.name==='tp'))(t.name==='tp'?rgPick:rgNote)()});
 ACT.tsave=()=>{const m=Math.max(1,Math.round(elapsed()/60000));regSheet(m,()=>{T={running:false,start:0,acc:0,subj:T.subj};saveT()})};
@@ -2756,6 +2756,26 @@ document.addEventListener('change',e=>{const el=e.target;if(el&&el.dataset&&el.d
 ACT.cicloReg=b=>{const c=cicloDoc();let m=cicloSess(c);if(b&&b.dataset&&b.dataset.id){T.subj=b.dataset.id;const k=(c.seq||[]).findIndex((x,i)=>x===b.dataset.id&&!(c.sdone||[])[i]);if(k>=0&&c.smin&&c.smin[k])m=c.smin[k]}regSheet(m)};
 const cicloSave=async d=>{await put('metas','ciclo',Object.assign({kind:'ciclo'},cicloDoc(),d));render()};
 ACT.cicloEd=()=>{V.cicloEd=!V.cicloEd;render()};
+ACT.hedit=b=>{const d=b.dataset.d,i=+b.dataset.i;if(hrGuard(d))return;const x=get('sessions',d);if(!x||!x.log||!x.log[i])return;const l=x.log[i],m0=Math.round(+l.min||0),k0=l.sj||'geral',tpn=l.tp?(get('topics',l.tp)||{}).name:'';
+  const tks=RG_TASKS.includes(l.tk)?RG_TASKS:RG_TASKS.concat(l.tk?[l.tk]:[]);
+  sheet('Editar registro',`<label>Data *</label><input name="dt" type="date" value="${d}" min="${hrMinLock()}" max="${today()}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>Matéria *</label><select name="sj">${S.subjects.map(s=>`<option value="${s.id}" ${k0===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}<option value="geral" ${k0==='geral'?'selected':''}>Geral / outra</option></select></div><div><label>Tarefa *</label><select name="tk">${tks.map(t=>`<option ${l.tk===t?'selected':''}>${esc(t)}</option>`).join('')}</select></div></div>${tpn?`<div class="tiny muted" style="margin-top:8px">Assunto: ${esc(clip(tpn,70))} (se trocar a matéria, o assunto é removido)</div>`:''}<label>Onde parei (seção)</label><input name="au" value="${esc(l.au||'')}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>Página inicial</label><input name="pi" type="number" min="0" inputmode="numeric" value="${l.pi===''||l.pi==null?'':l.pi}"></div><div><label>Página final</label><input name="pf" type="number" min="0" inputmode="numeric" value="${l.pf===''||l.pf==null?'':l.pf}"></div></div><label>Questão em que parei</label><input name="qn" inputmode="numeric" value="${esc(l.qn||'')}"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>Questões feitas</label><input name="qf" type="number" min="0" inputmode="numeric" value="${l.qf===''||l.qf==null?'':l.qf}"></div><div><label>Acertos</label><input name="qa" type="number" min="0" inputmode="numeric" value="${l.qa===''||l.qa==null?'':l.qa}"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>Horas *</label><input name="h" type="number" min="0" max="24" inputmode="numeric" value="${Math.floor(m0/60)}"></div><div><label>Minutos *</label><input name="mi" type="number" min="0" max="59" inputmode="numeric" value="${m0%60}"></div></div><label>Comentário</label><textarea name="cm" rows="3">${esc(l.cm||'')}</textarea>`,async o=>{
+    const cur=get('sessions',d);if(!cur||!cur.log||!cur.log[i])return false;const nd=o.dt||d;
+    const mm=Math.round((+o.h||0)*60+(+o.mi||0));if(mm<1){toast('Informe as horas ou os minutos');return false}
+    {const qf=o.qf===''||o.qf==null?null:+o.qf,qa=o.qa===''||o.qa==null?null:+o.qa;if(qa!=null&&qf==null){toast('Informe quantas questões você fez');return false}if(qf!=null&&qa!=null&&qa>qf){toast('Os acertos não podem passar das questões feitas');return false}}
+    if(o.pi!==''&&o.pf!==''&&o.pi!=null&&o.pf!=null&&+o.pf<+o.pi){toast('A página final não pode ser menor que a inicial');return false}
+    if(hrGuard(nd))return false;
+    const nk=o.sj||'geral',ex=!!l.ex,nn=v=>v===''||v==null?'':+v;
+    const nl=Object.assign({},l,{sj:nk,tk:o.tk,au:String(o.au||'').trim(),pi:nn(o.pi),pf:nn(o.pf),qn:String(o.qn||'').trim(),qf:nn(o.qf),qa:nn(o.qa),cm:String(o.cm||'').trim(),min:mm});
+    if(nk!==k0){nl.tp='';nl.sd='';nl.sk=''}
+    const by=Object.assign({},cur.by||{}),xb=Object.assign({},cur.xby||{}),tg=ex?xb:by;
+    tg[k0]=Math.max(0,(tg[k0]||0)-m0);if(!tg[k0])delete tg[k0];
+    if(nd===d){tg[nk]=(tg[nk]||0)+mm;const log=cur.log.slice();log[i]=nl;
+      await put('sessions',d,Object.assign({},cur,{date:d,minutes:Math.max(0,(cur.minutes||0)-m0+mm),by,xby:xb,log}))}
+    else{const log=cur.log.filter((_,j)=>j!==i);
+      await put('sessions',d,Object.assign({},cur,{date:d,minutes:Math.max(0,(cur.minutes||0)-m0),by,xby:xb,log}));
+      const c2=get('sessions',nd)||{},b2=Object.assign({},c2.by||{}),x2=Object.assign({},c2.xby||{}),t2=ex?x2:b2;t2[nk]=(t2[nk]||0)+mm;
+      await put('sessions',nd,{date:nd,minutes:(c2.minutes||0)+mm,by:b2,xby:x2,log:(c2.log||[]).concat([nl])})}
+    toast('Registro atualizado');render()},{save:'Salvar alterações',nofocus:true})};
 ACT.hfilt=b=>{V.hf=b.dataset.id||'';render()};
 VIEWS.hist=()=>{
   const L=[];S.sessions.forEach(x=>(x.log||[]).forEach((l,i)=>L.push(Object.assign({date:x.date,_i:i},l))));
@@ -2772,7 +2792,7 @@ VIEWS.hist=()=>{
   const ids=[...new Set(all.map(l=>l.sj||'geral'))];
   const chips=ids.length>1?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px"><button class="btn sm ${f?'':'pri'}" data-act="hfilt" data-id="">Todas</button>${ids.map(i=>`<button class="btn sm ${f===i?'pri':''}" data-act="hfilt" data-id="${i}">${esc(nm(i))}</button>`).join('')}</div>`:'';
   let cur='';const rows=shown.slice(0,200).map(l=>{const h=l.date!==cur?(cur=l.date,`<div class="tiny muted" style="margin:12px 0 6px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">${fdate(l.date)}</div>`):'';const w=where(l),q=qtxt(l);
-    return h+`<div class="card" style="padding:12px;margin:0 0 8px"><div class="row"><b class="grow">${esc(nm(l.sj))}</b><span class="tiny muted">${esc(l.tk||'Estudo')} · ${cicloH(l.min||0)}</span></div>${w.length?`<div style="margin-top:6px">${w.join(' · ')}</div>`:''}${q?`<div class="tiny" style="margin-top:4px">${q}</div>`:''}${l.cm?`<div class="tiny muted" style="margin-top:4px">${esc(clip(l.cm,200))}</div>`:''}<div style="margin-top:8px;text-align:right"><button class="btn sm" data-act="hdel" data-d="${l.date}" data-i="${l._i}">Excluir registro</button></div></div>`}).join('');
+    return h+`<div class="card" style="padding:12px;margin:0 0 8px"><div class="row"><b class="grow">${esc(nm(l.sj))}</b><span class="tiny muted">${esc(l.tk||'Estudo')} · ${cicloH(l.min||0)}</span></div>${w.length?`<div style="margin-top:6px">${w.join(' · ')}</div>`:''}${q?`<div class="tiny" style="margin-top:4px">${q}</div>`:''}${l.cm?`<div class="tiny muted" style="margin-top:4px">${esc(clip(l.cm,200))}</div>`:''}<div style="margin-top:8px;text-align:right"><button class="btn sm" data-act="hedit" data-d="${l.date}" data-i="${l._i}" style="margin-right:6px">Editar registro</button><button class="btn sm" data-act="hdel" data-d="${l.date}" data-i="${l._i}">Excluir registro</button></div></div>`}).join('');
   return head('Histórico de estudo','<button class="btn pri sm" data-act="addmin" data-m="0">Registrar estudo</button>')+restCard()+(all.length?stop+`<div class="sec"><h2 style="font-size:16px">Registros</h2>${chips}${rows}</div>`:`<div class="sec">${empty('Nenhum estudo registrado','Registre um estudo e ele aparece aqui, com a página e a questão onde você parou.')}</div>`)};
 ACT.cicloPlanMin=()=>{V.cicloPlanMin=!cpMin(cicloDoc());render()};
 ACT.cicloSel=async b=>{const all=cicloAll().map(x=>x.id),cur=cicloSubs().map(x=>x.id),id=b.dataset.id,n=cur.includes(id)?cur.filter(x=>x!==id):all.filter(x=>cur.includes(x)||x===id);await cicloSave({sel:n,done:{},seq:[],sdone:[]})};
