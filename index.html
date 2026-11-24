@@ -209,8 +209,8 @@ button.item:hover{border-color:var(--accent)}
 @media(prefers-reduced-motion:reduce){#side{transition:none}}
 .mmbox{display:flex;flex-direction:column;gap:10px;margin-top:6px}
 .mmwrap{position:relative}
-#mmv{height:62vh;min-height:300px;background-color:#fff;background-image:radial-gradient(#d6dbe8 1px,transparent 1px);background-size:20px 20px;border:1px solid var(--line);border-radius:16px;overflow:hidden;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:var(--shadow)}
-#mmv.lulu{background-image:none}
+#mmv{height:62vh;min-height:300px;background-color:var(--surface);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:20px 20px;border:1px solid var(--line);border-radius:16px;overflow:hidden;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:var(--shadow)}
+#mmv.lulu{background-image:none;background-color:#fff}
 .mmask-fs{display:none}.mmfs .mmask-fs{display:inline-flex}
 .mmbox.mmfs{position:fixed;inset:0;z-index:60;background:var(--bg,#fff);padding:10px;margin:0}.mmfs .mmwrap{flex:1;min-height:0}.mmfs #mmv{height:100%}
 .mmhd{display:flex;align-items:center;gap:10px;margin:12px 0 10px}.mmhd-t{flex:1;min-width:0}
@@ -4882,11 +4882,15 @@ ACT.matadd=b=>{const id=b.dataset.id,o=jobs().filter(j=>(j.subjectId||'')!==id);
 
 /* ===== NEXUS · mapas mentais ===== */
 const MM_COL=[["#ffc9c9","#e03131"],["#b2f2bb","#2f9e44"],["#a5d8ff","#1971c2"],["#ffec99","#f08c00"],["#eebefa","#9c36b5"],["#99e9f2","#0c8599"],["#ffd8a8","#e8590c"],["#d0bfff","#6741d9"]];
-const MM_FS=[26,18,15,14],MM_MW=[200,180,190,190];
+const MM_FS=[26,18,15,14],MM_MW=[200,190,250,270];
 let _mmc;
 function mmW(s,fs,b){_mmc=_mmc||document.createElement('canvas').getContext('2d');_mmc.font=(b?'700 ':'')+fs+'px system-ui,Arial,sans-serif';return _mmc.measureText(s).width}
 const MM_HL={y:'#ffe066',g:'#b8f0c0',p:'#ffc4d6',b:'#a9d8ff',o:'#ffd6a5'};
-const mmPlain=t=>String(t||'').replace(/\*\*|==(?:[ygpbo]\|)?/g,'').replace(/\s*\{@-?\d+,-?\d+\}\s*$/,'').replace(/\s*\{[LRTB]\}\s*$/,'').replace(/\s*\{>[\w-]+\}\s*$/,'');
+const MM_HLD={y:'rgba(250,204,21,.38)',g:'rgba(74,222,128,.32)',p:'rgba(244,114,182,.34)',b:'rgba(56,189,248,.34)',o:'rgba(251,146,60,.36)'};
+const MM_DK=['#C6F432','#38bdf8','#fbbf24','#fb7185','#a78bfa','#2dd4bf','#fb923c','#f472b6'];
+const MM_KIND={ex:{l:'EXEMPLO',d:'#a78bfa',k:'#6d28d9'},mc:{l:'MACETE',d:'#C6F432',k:'#4d6a00'},rg:{l:'REGRA',d:'#38bdf8',k:'#0369a1'}};
+const mmDark=()=>{try{return document.documentElement.dataset.theme!=='light'}catch(e){return true}};
+const mmPlain=t=>String(t||'').replace(/\*\*|==(?:[ygpbo]\|)?/g,'').replace(/\s*\{@-?\d+,-?\d+\}\s*$/,'').replace(/\s*\{[LRTB]\}\s*$/,'').replace(/\s*\{>[\w-]+\}\s*$/,'').replace(/^(ex|mc|rg)>\s*/i,'');
 function mmToks(t){const o=[];let b=false,h=null,pend=false;
   String(t||'').split(/(\*\*|==)/).forEach(p=>{
     if(p==='**'){b=!b;return}
@@ -4917,8 +4921,8 @@ function mmClean(n,d){
 }
 function mmLayout(root){
   root=JSON.parse(JSON.stringify(root));
-  const meas=(n,d,pt)=>{const i=Math.min(d,3),L0=String(n.t||'').length,fs=d===0?(L0<=24?26:L0<=45?21:L0<=70?17:14):MM_FS[i],b=d<2;n.raw=n.t;n.d=d;n.key='r'+pt.join('.');n.alert=/^!\s*/.test(n.t);if(n.alert)n.t=n.t.replace(/^!\s*/,'');n.fs=fs;n.b=b;n.lines=mmWrap(n.t,d===0&&L0>24?Math.min(340,200+L0*2.2):MM_MW[i],fs,b);
-    n.w=Math.max(...n.lines.map(l=>mmLineW(l,fs,b)))+(d===0?44:n.alert?24:d>=2?14:26);n.h=n.lines.length*fs*1.3+(d===0?34:d===1?20:16);
+  const meas=(n,d,pt)=>{const i=Math.min(d,3),L0=String(n.t||'').length,fs=d===0?(L0<=24?26:L0<=45?21:L0<=70?17:14):MM_FS[i],b=d<2;n.raw=n.t;n.d=d;n.key='r'+pt.join('.');n.alert=/^!\s*/.test(n.t);if(n.alert)n.t=n.t.replace(/^!\s*/,'');{const km=n.t.match(/^(ex|mc|rg)>\s*/i);n.kind=km?km[1].toLowerCase():'';if(n.kind)n.t=n.t.replace(/^(ex|mc|rg)>\s*/i,'')}n.fs=fs;n.b=b;n.lines=mmWrap(n.t,d===0&&L0>24?Math.min(340,200+L0*2.2):MM_MW[i],fs,b);
+    n.w=Math.max(...n.lines.map(l=>mmLineW(l,fs,b)))+(d===0?44:(n.alert||n.kind)?24:d>=2?14:26);n.h=n.lines.length*fs*1.3+(n.kind?24:d===0?34:d===1?20:16);
     n.c.forEach((k,j)=>meas(k,d+1,pt.concat(j)));const g=d<1?28:d===1?14:10;
     n.sh=n.c.length?Math.max(n.h,n.c.reduce((a,k)=>a+k.sh,0)+(n.c.length-1)*g):n.h};
   const GX=72,all=[];
@@ -4965,23 +4969,24 @@ function mmElbow(ax,ay,bx,by,mx){
   const sx=bx>=ax?1:-1,sy=dy>0?1:-1,r=Math.max(0,Math.min(7,Math.abs(dy)/2,Math.abs(mx-ax),Math.abs(bx-mx)));
   return `M${f(ax)} ${f(ay)} L${f(mx-sx*r)} ${f(ay)} Q${f(mx)} ${f(ay)} ${f(mx)} ${f(ay+sy*r)} L${f(mx)} ${f(by-sy*r)} Q${f(mx)} ${f(by)} ${f(mx+sx*r)} ${f(by)} L${f(bx)} ${f(by)}`}
 function mmSvg(root,sel,exp,imgs){
-  const L=mmLayout(root);let e='',nodes='';imgs=imgs||[];
-  const defs=`<defs><filter id="mms" x="-15%" y="-20%" width="130%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.6" flood-color="#1b2540" flood-opacity=".20"/></filter><linearGradient id="mmr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#26335f"/><stop offset="1" stop-color="#4f5fd8"/></linearGradient></defs>`;
-  L.all.forEach(n=>{if(!n.par)return;const [ax,ay,bx,by]=mmEdge(n),col=MM_COL[n.ci%8][1],mx=(ax+bx)/2;
+  const L=mmLayout(root);let e='',nodes='';imgs=imgs||[];const dk=!exp&&mmDark(),CC=ci=>dk?MM_DK[ci%8]:MM_COL[ci%8][1];
+  const defs=`<defs><filter id="mms" x="-15%" y="-20%" width="130%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.6" flood-color="#1b2540" flood-opacity=".20"/></filter><linearGradient id="mmr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${dk?'#C6F432':'#0A0A0A'}"/><stop offset="1" stop-color="${dk?'#9ccc1c':'#2f4a0a'}"/></linearGradient></defs>`;
+  L.all.forEach(n=>{if(!n.par)return;const [ax,ay,bx,by]=mmEdge(n),col=CC(n.ci),mx=(ax+bx)/2;
     e+=`<path d="${n.vt?mmVert(ax,ay,bx,by):mmElOn()?mmElbow(ax,ay,bx,by,mx):`M${ax.toFixed(1)} ${ay.toFixed(1)} C${mx.toFixed(1)} ${ay.toFixed(1)} ${mx.toFixed(1)} ${by.toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)}`}" fill="none" stroke="${col}" stroke-width="${n.d<=1?4.5:n.d===2?2.6:2}" stroke-linecap="round" opacity="${n.d<=1?1:.85}"/>`;
     if(n.d>=2)e+=`<circle cx="${(n.dir>0?bx-1:bx+1).toFixed(1)}" cy="${by.toFixed(1)}" r="3" fill="${col}"/>`});
-  L.all.forEach(n=>{const col=n.d===0?['#26335f','#26335f']:MM_COL[n.ci%8],tc=n.d===0?'#ffffff':'#1b2236';
-    const box=n.d<=1||n.alert,cx=n.x+n.w/2,cy=n.y+n.h/2;
+  L.all.forEach(n=>{const kd=n.kind?MM_KIND[n.kind]:null,kc=kd?(dk?kd.d:kd.k):'',col=n.d===0?['#26335f','#26335f']:dk?[MM_DK[n.ci%8]+'26',MM_DK[n.ci%8]]:MM_COL[n.ci%8],tc=n.d===0?(dk?'#0A0A0A':'#ffffff'):dk?'#F4F4EF':'#1b2236';
+    const box=n.d<=1||n.alert||!!kd,cx=n.x+n.w/2,cy=n.y+n.h/2;
     let g=`<g data-n="${n.key}" style="cursor:pointer"${n.alert?` transform="rotate(-1.4 ${cx.toFixed(1)} ${cy.toFixed(1)})"`:''}>`;
-    if(!exp&&n.key===sel)g+=`<rect x="${(n.x-6).toFixed(1)}" y="${(n.y-6).toFixed(1)}" width="${(n.w+12).toFixed(1)}" height="${(n.h+12).toFixed(1)}" rx="${n.d===0?n.h/2+6:15}" fill="none" stroke="#111" stroke-width="3" stroke-dasharray="6 4"/>`;
-    const fill=n.alert?'#fff1a8':n.d===0?'url(#mmr)':col[0],rx=n.alert?5:n.d===0?n.h/2:12;
-    g+=`<rect x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}" width="${n.w.toFixed(1)}" height="${n.h.toFixed(1)}" rx="${rx.toFixed(1)}" fill="${box?fill:'#ffffff'}" fill-opacity="${box?1:0}" stroke="${box?(n.alert?'#e6c200':n.d===0?'none':col[1]):'none'}" stroke-width="${n.d<=1?2:1.5}"${box&&!exp?' filter="url(#mms)"':''} pointer-events="all"/>`;
+    if(!exp&&n.key===sel)g+=`<rect x="${(n.x-6).toFixed(1)}" y="${(n.y-6).toFixed(1)}" width="${(n.w+12).toFixed(1)}" height="${(n.h+12).toFixed(1)}" rx="${n.d===0?n.h/2+6:15}" fill="none" stroke="${dk?'#C6F432':'#111'}" stroke-width="3" stroke-dasharray="6 4"/>`;
+    const fill=kd?kc+(dk?'22':'1f'):n.alert?(dk?'#3a2e0c':'#fff1a8'):n.d===0?'url(#mmr)':col[0],rx=n.alert?5:kd?10:n.d===0?n.h/2:12;
+    g+=`<rect x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}" width="${n.w.toFixed(1)}" height="${n.h.toFixed(1)}" rx="${rx.toFixed(1)}" fill="${box?fill:'#ffffff'}" fill-opacity="${box?1:0}" stroke="${box?(kd?kc:n.alert?(dk?'#fbbf24':'#e6c200'):n.d===0?'none':col[1]):'none'}" stroke-width="${n.d<=1?2:1.5}"${kd&&n.kind==='ex'?' stroke-dasharray="5 3"':''}${box&&!exp&&!dk?' filter="url(#mms)"':''} pointer-events="all"/>`;
+    if(kd){const pw=kd.l.length*6.4+14;g+=`<rect x="${(n.x+10).toFixed(1)}" y="${(n.y-7).toFixed(1)}" width="${pw.toFixed(1)}" height="14" rx="7" fill="${kc}" pointer-events="none"/><text x="${(n.x+10+pw/2).toFixed(1)}" y="${(n.y+0.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="800" fill="${dk?'#0A0A0A':'#fff'}" letter-spacing=".6" style="pointer-events:none">${kd.l}</text>`}
     if(n.alert)g+=`<circle cx="${cx.toFixed(1)}" cy="${(n.y+1).toFixed(1)}" r="4.5" fill="#e03131" stroke="#fff" stroke-width="1.5"/>`;
-    if(n.d===1){const bx=n.dir>0?n.x:n.x+n.w;g+=`<circle cx="${bx.toFixed(1)}" cy="${n.y.toFixed(1)}" r="11" fill="${col[1]}" stroke="#fff" stroke-width="2"/><text x="${bx.toFixed(1)}" y="${(n.y+0.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="800" fill="#fff" style="pointer-events:none">${n.ci+1}</text>`}
+    if(n.d===1){const bx=n.dir>0?n.x:n.x+n.w;g+=`<circle cx="${bx.toFixed(1)}" cy="${n.y.toFixed(1)}" r="11" fill="${col[1]}" stroke="${dk?'#0A0A0A':'#fff'}" stroke-width="2"/><text x="${bx.toFixed(1)}" y="${(n.y+0.5).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="800" fill="${dk?'#0A0A0A':'#fff'}" style="pointer-events:none">${n.ci+1}</text>`}
     if(!box)g+=`<line x1="${n.x.toFixed(1)}" y1="${(n.y+n.h).toFixed(1)}" x2="${(n.x+n.w).toFixed(1)}" y2="${(n.y+n.h).toFixed(1)}" stroke="${col[1]}" stroke-width="1.6" stroke-linecap="round" opacity=".75"/>`;
-    const lh=n.fs*1.3,y0=cy-(n.lines.length-1)*lh/2-(box?0:2);
+    const lh=n.fs*1.3,y0=cy-(n.lines.length-1)*lh/2-(box?0:2)+(kd?2:0);
     n.lines.forEach((l,i)=>{const ty=y0+i*lh,lw=mmLineW(l,n.fs,n.b);let x=cx-lw/2,run=null,mk='';
-      const flush=()=>{if(run){const c=run.h?MM_HL[run.h]:(n.d>=2&&!n.alert)?col[0]:'#ffe066';mk+=`<rect x="${(run.x-3).toFixed(1)}" y="${(ty-n.fs*.56).toFixed(1)}" width="${(run.w+6).toFixed(1)}" height="${(n.fs*1.12).toFixed(1)}" rx="4" fill="${c}" opacity=".95"/>`;run=null}};
+      const flush=()=>{if(run){const c=run.h?(dk?MM_HLD:MM_HL)[run.h]:(n.d>=2&&!n.alert)?col[0]:(dk?MM_HLD.y:'#ffe066');mk+=`<rect x="${(run.x-3).toFixed(1)}" y="${(ty-n.fs*.56).toFixed(1)}" width="${(run.w+6).toFixed(1)}" height="${(n.fs*1.12).toFixed(1)}" rx="4" fill="${c}" opacity=".95"/>`;run=null}};
       if(n.d>=1)l.forEach(k=>{const w=mmW(k.w+' ',n.fs,n.b||k.b),ww=mmW(k.w,n.fs,n.b||k.b);
         if(k.h!==null&&k.h!==undefined){if(run&&run.h===k.h)run.w=x+ww-run.x;else{flush();run={x,w:ww,h:k.h}}}else flush();
         x+=w});
@@ -5000,7 +5005,7 @@ function mmSvg(root,sel,exp,imgs){
   L.x=X0;L.y=Y0;L.w=X1-X0;L.h=Y1-Y0;
   const vb=`${L.x.toFixed(0)} ${L.y.toFixed(0)} ${L.w.toFixed(0)} ${L.h.toFixed(0)}`;
   const bg=exp?`<rect x="${L.x.toFixed(0)}" y="${L.y.toFixed(0)}" width="${L.w.toFixed(0)}" height="${L.h.toFixed(0)}" fill="#ffffff"/>`:'';
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" font-family="'Segoe UI',system-ui,Roboto,Arial,sans-serif"${exp?'':' style="display:block;width:100%;height:100%;touch-action:none"'}>${defs}${bg}${e}${nodes}</svg>`;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" font-family="'Figtree','Segoe UI',system-ui,Roboto,Arial,sans-serif"${exp?'':' style="display:block;width:100%;height:100%;touch-action:none"'}>${defs}${bg}${e}${nodes}</svg>`;
   return {svg,w:Math.round(L.w),h:Math.round(L.h),bb:[L.x,L.y,L.w,L.h]};
 }
 function mmExcal(root,imgs){imgs=imgs||[];
