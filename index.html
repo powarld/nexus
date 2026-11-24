@@ -366,8 +366,9 @@ function pfChoose(){
 /* ---- persistência ---- */
 let chain=Promise.resolve();
 const q=fn=>{chain=chain.then(fn).catch(e=>{console.error(e);toast('Não foi possível salvar. Tente de novo.')});return chain};
-const put=(c,id,data)=>{if(c==='subjects'&&data&&CURSOS&&cursoAct()&&!get('subjects',id)&&!(data.concursoIds||[]).length)data=Object.assign({},data,{concursoIds:[cursoAct()]});if(c==='cards'&&data&&!get('cards',id)){data=Object.assign({},data);if(!data.due)data.due=addDays(today(),1);if(!data.mapId){try{data.mapId=mapGuess(data)||''}catch(e){data.mapId=''}}}if(data&&data._tpl){data=Object.assign({},data);delete data._tpl}return db?q(()=>db.collection(c).doc(id).set(data)):toast('Sem conexão com os dados')};
+const put=(c,id,data)=>{if(c==='subjects'&&data&&typeof data.name==='string')data=Object.assign({},data,{name:fmtName(data.name)});if(c==='subjects'&&data&&CURSOS&&cursoAct()&&!get('subjects',id)&&!(data.concursoIds||[]).length)data=Object.assign({},data,{concursoIds:[cursoAct()]});if(c==='cards'&&data&&!get('cards',id)){data=Object.assign({},data);if(!data.due)data.due=addDays(today(),1);if(!data.mapId){try{data.mapId=mapGuess(data)||''}catch(e){data.mapId=''}}}if(data&&data._tpl){data=Object.assign({},data);delete data._tpl}return db?q(()=>db.collection(c).doc(id).set(data)):toast('Sem conexão com os dados')};
 const patch=(c,id,data)=>{if(!db)return toast('Sem conexão com os dados');
+  if(c==='subjects'&&data&&typeof data.name==='string')data=Object.assign({},data,{name:fmtName(data.name)});
   const d=S[c]&&S[c].find(x=>x.id===id);if(d&&!Object.keys(data).some(k=>k.includes('.')||(data[k]&&data[k].__delete__))){Object.assign(d,data);try{scheduleRender()}catch(e){}} // atualização imediata na tela
   if(d&&d._tpl)return q(()=>db.collection(c).doc(id).set(strip(d)));
   return q(()=>db.collection(c).doc(id).update(data))};
@@ -377,6 +378,8 @@ const del=(c,id)=>{if(!db)return toast('Sem conexão com os dados');
   return q(()=>db.collection(c).doc(id).delete())};
 const get=(c,id)=>S[c].find(x=>x.id===id)||(c==='summaries'?VOLDOC[id]:undefined);
 const cfg=()=>S.settings.find(x=>x.id==='main')||{};
+const fmtName=s=>{s=String(s==null?'':s).replace(/\s+/g,' ').trim();if(!s)return s;const LOW=new Set(['de','da','do','das','dos','e','em','a','o','as','os','na','no','nas','nos','para','por','com','ao','aos','à','às','um','uma','ou','sobre','pelo','pela']);const up=s===s.toUpperCase()&&s!==s.toLowerCase();let first=true;return s.split(' ').map(w=>{const m=w.match(/^([^A-Za-zÀ-ÿ0-9]*)(.*?)([^A-Za-zÀ-ÿ0-9]*)$/);const pre=m[1],c=m[2],suf=m[3];if(!c)return w;const isF=first;first=false;if(/\d/.test(c)||/^[IVXLC]+$/.test(c)&&c.length<=5&&c===c.toUpperCase()&&/^(I|II|III|IV|V|VI|VII|VIII|IX|X)$/.test(c))return w;const lc=c.toLowerCase();if(!isF&&LOW.has(lc))return pre+lc+suf;const allU=c===c.toUpperCase()&&c!==lc,allL=c===lc;if(allU&&c.length<=(up?3:5))return w;if(allU||allL)return pre+c.charAt(0).toUpperCase()+lc.slice(1)+suf;return w}).join(' ')};
+
 /* ---- cursos (só na versão compartilhada): PMDF pré-preenchido ou concurso cadastrado pela pessoa ---- */
 const CURSOS=true;
 let ADMIN=false,RDB=null;const TPLC=['subjects','topics','concursos','notes','summaries','materials','cards','decks','questions','maps','mapimgs','lulu'],TPL={},OWN={};
