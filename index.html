@@ -1657,9 +1657,9 @@ async function addMinutes(sid,m,date,log){
   await put('sessions',id,d);toast('+'+m+' min registrados');
   try{const c=cicloDoc();if(sid&&sid!=='geral'&&!(log&&log.tk==='Revisão')&&c.seq&&c.seq.length&&c.sv===2){const dn=(c.sdone||[]).slice(),k=c.seq.findIndex((x,i)=>x===sid&&!dn[i]);if(k>=0){dn[k]=true;const fin=c.seq.every((x,i)=>dn[i]);await cicloSave({sdone:dn,cycles:(c.cycles||0)+(fin?1:0)});if(fin)toast('Ciclo completo!')}}}catch(e){console.error(e)}
 }
-ACT.tstart=()=>{T.running=true;T.start=Date.now();saveT();render();pillUpdate()};
-ACT.tpause=()=>{T.acc=elapsed();T.running=false;saveT();render();pillUpdate()};
-ACT.treset=()=>{T={running:false,start:0,acc:0,subj:T.subj};saveT();render();pillUpdate()};
+ACT.tstart=()=>{T.running=true;T.start=Date.now();saveT();if($('#clock'))render();pillUpdate()};
+ACT.tpause=()=>{T.acc=elapsed();T.running=false;saveT();if($('#clock'))render();pillUpdate()};
+ACT.treset=()=>{T={running:false,start:0,acc:0,subj:T.subj};saveT();if($('#clock'))render();pillUpdate()};
 const RG_TASKS=['PDF','Videoaula','Questões','Revisão','Flashcards','Resumo / mapa mental','Leitura de lei','Outro'];
 const rgLast=(sj,tk)=>{let best=null;S.sessions.forEach(x=>(x.log||[]).forEach(l=>{if(l.sj===sj&&l.tk===tk&&(!best||(l.at||0)>(best.at||0)))best=l}));return best};
 const rgSums=sj=>S.summaries.filter(d=>!/_v\d+$/.test(d.id)&&(d.subjectId||(get('topics',d.topicId)||{}).subjectId)===sj).sort((p,q)=>{const a=get('reads','summaries_'+p.id)||{},b=get('reads','summaries_'+q.id)||{};return (b.at||0)-(a.at||0)||(q.createdAt||0)-(p.createdAt||0)});
