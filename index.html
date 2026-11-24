@@ -1677,7 +1677,7 @@ VIEWS.study=()=>{
   if(V.p.topic&&get('topics',V.p.topic))return topicChoice(get('topics',V.p.topic));
   if(V.p.subject&&get('subjects',V.p.subject))return subjectView(get('subjects',V.p.subject));
   if(V.p.concurso&&get('concursos',V.p.concurso))return concursoView(get('concursos',V.p.concurso));
-  return head('Conteúdo',(CURSOS&&ADMIN?'<span class="chip">Admin</span>':'')+(CURSOS&&!ADMIN?`<button class="btn sm" data-act="cursosw" style="max-width:min(62vw,300px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc('Trocar curso'+(cursoAct()?': '+((get('concursos',cursoAct())||{}).name||'Curso'):''))}</button>`:'')+`<button class="btn sm" data-act="new" data-c="subjects">＋ Disciplina</button>${ADMIN?`<button class="btn sm" data-act="pjlib">Vários PDFs</button><button class="btn sm" data-act="pjnew">Novo PDF</button>`:''}`)+mMat();
+  return head('Conteúdo',(CURSOS&&ADMIN?'<span class="chip">Admin</span>':'')+(CURSOS&&!ADMIN?`<button class="btn sm" data-act="cursosw" style="background:var(--violet-soft);color:var(--violet);border-color:var(--violet);font-weight:700;max-width:min(62vw,300px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc('Trocar curso'+(cursoAct()?': '+((get('concursos',cursoAct())||{}).name||'Curso'):''))}</button>`:'')+`<button class="btn sm" data-act="new" data-c="subjects">＋ Disciplina</button>${ADMIN?`<button class="btn sm" data-act="pjlib">Vários PDFs</button><button class="btn sm" data-act="pjnew">Novo PDF</button>`:''}`)+mMat();
 };
 function topicChoice(t){
   const sj=get('subjects',t.subjectId)||{};
