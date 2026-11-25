@@ -6619,8 +6619,8 @@ setInterval(bgRender,1000);
 /* ---- zoom da aba aberta (cada aba lembra o seu zoom) ---- */
 const NZ=(()=>{try{return JSON.parse(localStorage.getItem('nx-zoom')||'{}')}catch(e){return {}}})();
 function nzApply(){
-  const z=NZ[V.view]||1,m=document.getElementById('main');if(m)m.style.zoom=z===1?'':String(z);
-  let el=document.getElementById('nzbar');
+  const m=document.getElementById('main');if(m)m.style.zoom='';{const b=document.getElementById('nzbar');if(b)b.remove()}return;
+  let el=document.getElementById('nzbar'),z=1;
   if(!el){el=document.createElement('div');el.id='nzbar';el.innerHTML='<button type="button" data-nz="-" aria-label="Diminuir zoom">−</button><button type="button" data-nz="0" aria-label="Zoom normal" class="nzv">100%</button><button type="button" data-nz="+" aria-label="Aumentar zoom">+</button>';document.body.appendChild(el);
     el.addEventListener('pointerdown',e=>e.preventDefault());
     el.addEventListener('click',e=>{const b=e.target.closest('[data-nz]');if(b){e.stopPropagation();nzStep(b.dataset.nz)}})}
