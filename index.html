@@ -1240,7 +1240,7 @@ function restAuto(){const k=hrMinDate();if(V.autoK===k||!V.loaded.settings||!V.l
   const c=cfg();if(!c.restauto){put('settings','main',Object.assign({},strip(c),{restauto:today()}));return}
   let d=c.restauto,rest=(c.rest||[]).slice(),fail=(c.fail||[]).slice(),sh=Object.assign({},c.restsh||{}),ch=0,g=0;
   const wr=x=>rest.find(r=>weekStart(r)===weekStart(x));
-  const at=c.atest||[];while(d<k&&g++<120){const st=S.sessions.some(x=>x.date===d&&(x.minutes||0)>0);
+  const at=c.atest||[];while(d<k&&g++<120){const st=S.sessions.some(x=>x.date===d&&okDay(x.minutes||0,S.questions.filter(q=>q.marked&&q.marked!=='__nao'&&q.date===d).length,d));
     if(!st&&!rest.includes(d)&&!fail.includes(d)&&!at.includes(d)){if(wr(d)){fail.push(d);schedShift(1)}else{rest.push(d);sh[d]=schedShift(1)}ch=1}
     d=addDays(d,1)}
   if(ch||d!==c.restauto)put('settings','main',Object.assign({},strip(c),{rest,fail,restsh:sh,restauto:d}))}
@@ -1266,7 +1266,7 @@ function qAns(){return S.questions.filter(q=>q.marked&&q.marked!=='__nao').conca
 function rkStats(){
   const t=today(),w0=addDays(t,-6),ans=qAns(),wk=ans.filter(q=>(q.date||'')>=w0);
   const mins=S.sessions.reduce((n,x)=>n+(x.minutes||0),0),wm=S.sessions.filter(x=>(x.date||'')>=w0).reduce((n,x)=>n+(x.minutes||0),0);
-  const md={};S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date)md[x.date]=1});const dm={},d70=addDays(t,-70);S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date&&x.date>=d70)dm[x.date]=Math.round(x.minutes)});
+  const qa={};ans.forEach(q=>{if(q.date)qa[q.date]=(qa[q.date]||0)+1});const md={};S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date&&okDay(x.minutes,qa[x.date]||0,x.date))md[x.date]=1});const dm={},d70=addDays(t,-70);S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date&&x.date>=d70)dm[x.date]=Math.round(x.minutes)});
   const dq={};ans.forEach(q=>{if(q.date&&q.date>=d70)dq[q.date]=(dq[q.date]||0)+1});const rs=new Set((cfg().rest||[]).concat(cfg().atest||[]));let k=t;if(!md[k])k=addDays(k,-1);let sk=0;while(md[k]||rs.has(k)){if(md[k])sk++;k=addDays(k,-1)}
   let skb=0,run=0,prev='';const brid=(a,b)=>{let x=addDays(a,1);while(x<b){if(!rs.has(x))return false;x=addDays(x,1)}return true};Object.keys(md).sort().forEach(d=>{run=prev&&brid(prev,d)?run+1:1;prev=d;if(run>skb)skb=run});
   return {sk,skb:Math.max(skb,sk),name:pfName(),q:ans.length,qok:ans.filter(isOk).length,min:Math.round(mins),wq:wk.length,wqok:wk.filter(isOk).length,wmin:Math.round(wm),dm,dq,rest:(cfg().rest||[]).filter(x=>x>=d70),atest:(cfg().atest||[]).filter(x=>x>=d70),dbet:(cfg().duel||{}).bet||'',dtn:(cfg().duel||{}).tn||null,fail:(cfg().fail||[]).filter(x=>x>=d70),upd:Date.now(),wk:t}}
@@ -1275,10 +1275,11 @@ async function rkSync(force){
     await RDB.collection('rank').doc(PFID).set(rkStats())}catch(e){console.error('rank',e)}}
 function rkSoon(){try{if(!RDB||!PFID||V.rkTm)return;const w=Math.max(1500,30000-(Date.now()-(V.rkLast||0)));V.rkTm=setTimeout(()=>{V.rkTm=0;try{const st=rkStats(),k=JSON.stringify([st.q,st.qok,st.wq,st.wqok,st.min,st.wmin,st.sk]);if(k===V.rkKey)return;V.rkKey=k;V.rkLast=Date.now();rkSync(true)}catch(e){}},w)}catch(e){}}
 function rkListen(){try{if(!RDB)return;duelListen();RDB.collection('rank').onSnapshot(sn=>{V.rk.docs=sn.docs.map(d=>Object.assign({id:d.id},d.data()));if(ADMIN){const X=['maria cristina','usuário de teste','usuario de teste'];V.rk.docs.filter(d=>d.id!==PFID&&X.includes(String(d.name||'').trim().toLowerCase())&&!(V.rkDel||(V.rkDel={}))[d.id]).forEach(d=>{V.rkDel[d.id]=1;RDB.collection('rank').doc(d.id).delete().then(()=>{V.rk.docs=V.rk.docs.filter(x=>x.id!==d.id);scheduleRender()}).catch(e=>{console.error(e)})})}if(V.view==='rank')scheduleRender()},e=>console.error('rank',e))}catch(e){console.error(e)}}
-IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.flame='<path d="M12 3c1 4 5 6 5 11a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/>';IC.bolt='<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>';IC.clock='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';IC.crown='<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>';
+IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.flame='<path d="M12 3c1 4 5 6 5 11a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/>';IC.bolt='<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>';IC.clock='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';IC.crown='<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>';
 const rkI=(n,c)=>`<svg class="i rk-i" viewBox="0 0 24 24"${c?` style="color:${c}"`:''}>${IC[n]||''}</svg>`;
 const RK_T=['Novato','Aprendiz','Estudante','Focado','Dedicado','Veterano','Mestre','Elite','Lenda'];
 const rkNeed=l=>100*(l-1)*(l-1),rkLv=xp=>{let l=1;while(xp>=rkNeed(l+1))l++;return l},rkTitle=l=>RK_T[Math.min(l-1,RK_T.length-1)];
+const RK_RULE='2026-11-25',okDay=(m,q,d)=>d<RK_RULE?m>0:m>=60&&q>=20;
 const RK_A=[
 ['sk7','flame','Sequência de 7 dias',d=>d.skb||d.sk||0,7,'dias',100,'Constante'],
 ['sk14','flame','14 dias seguidos',d=>d.skb||d.sk||0,14,'dias',250,'Imparável'],
@@ -1340,9 +1341,9 @@ VIEWS.rank=()=>{
   const rows2=RK_A.map(a=>({a,cur:a[3](own)})).map(o=>Object.assign(o,{on:o.cur>=o.a[4],p:Math.min(1,o.cur/o.a[4])})),show=V.rk.ach?rows2.slice().sort((x,y)=>y.on-x.on||y.p-x.p):rows2.filter(o=>!o.on).sort((x,y)=>y.p-x.p).slice(0,4),
     ach=show.map(({a,cur,on,p})=>`<div class="rk-a ${on?'on':'off'}"><div class="row" style="gap:6px"><span class="e">${rkI(a[1])}</span><b class="grow" style="line-height:1.2">${a[2]}</b></div><div class="rk-bar"><i style="width:${Math.round(p*100)}%"></i></div><div class="tiny muted" style="margin-top:4px;display:flex;justify-content:space-between"><span>${on?rkI('check','var(--ok)')+' Conquistado':Math.min(cur,a[4])+' / '+a[4]+' '+a[5]}</span><span style="color:var(--accent);font-weight:800">+${a[6]} XP</span></div>${a[7]?`<div class="tiny" style="margin-top:2px;opacity:.7">Título: ${a[7]}</div>`:''}</div>`).join('');
   const pod=L.slice(0,3),po=[pod[1],pod[0],pod[2]],cls=[2,1,3],pcard=(d,i)=>d?`<div class="rk-pc rk-p${cls[i]} ${d.id===me?'me':''}" style="animation-delay:${i*.1}s">${cls[i]===1?`<div style="line-height:1">${rkI("crown","#facc15")}</div>`:''}${rkAv(d.name,cls[i]===1?64:52)}<div class="nm">${esc(d.name||'Usuário')}</div>${rkTitleOf(d)?`<div class="tiny" style="color:var(--accent);font-weight:700">${rkTitleOf(d)}</div>`:''}<div class="vl">${MX.f(MX.v(d))}</div><div class="rk-st" style="animation-delay:${i*.1}s">${cls[i]}º</div></div>`:'<div></div>';
-  const dots=d=>{const dv=rkDer(d),dm=d.dm||{};let h='';for(let i=6;i>=0;i--){const dt=addDays(t,-i);h+=`<i class="rkd ${(dm[dt]||0)>0?'ok':dv.at.has(dt)?'at':dv.rest.has(dt)?'rs':dv.fail.has(dt)?'fl':''}" title="${fdate(dt)}"></i>`}return h};
+  const dots=d=>{const dv=rkDer(d),dm=d.dm||{};let h='';for(let i=6;i>=0;i--){const dt=addDays(t,-i);h+=`<i class="rkd ${okDay(dm[dt]||0,(d.dq||{})[dt]||0,dt)?'ok':dv.at.has(dt)?'at':dv.rest.has(dt)?'rs':dv.fail.has(dt)?'fl':''}" title="${fdate(dt)}"></i>`}return h};
   const rows=L.slice(3).map((d,i)=>{const you=d.id===me,l=rkLv(rkXp(d,false));return `<div class="rk-row ${you?'me':''}"><div class="pos">${i+4}º</div>${rkAv(d.name,38)}<div style="min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||'Usuário')}${you?' <span class="tiny muted">(você)</span>':''}<span class="rk-lv">Nv ${l}${rkTitleOf(d)?' · '+rkTitleOf(d):''}</span></div><div class="rk-bar" style="height:6px;margin-top:6px"><i style="width:${Math.round(MX.v(d)/lead*100)}%;background:${you?'':'#8886'}"></i></div><div class="rk-dots">${dots(d)}</div></div><div style="font-weight:800;text-align:right">${MX.f(MX.v(d))}<div class="tiny muted">${d.sk?rkI('flame','#fb923c')+' '+d.sk:''}</div></div></div>`}).join('');
-  return top+duelBanner(me,all)+hero+`<div class="rk-seg">${mseg('xp',rkI('bolt')+' XP')}${mseg('t',rkI('clock')+' Tempo')}${mseg('q',rkI('pen')+' Questões')}${mseg('s',rkI('flame')+' Sequência')}</div><div class="rk-pod">${po.map(pcard).join('')}</div>${rows}
+  return top+duelBanner(me,all)+rkGoal(own)+hero+`<div class="rk-seg">${mseg('xp',rkI('bolt')+' XP')}${mseg('t',rkI('clock')+' Tempo')}${mseg('q',rkI('pen')+' Questões')}${mseg('s',rkI('flame')+' Sequência')}</div><div class="rk-pod">${po.map(pcard).join('')}</div>${rows}
   <div class="row" style="margin:18px 0 8px"><h3 class="grow" style="margin:0;font-size:16px">Conquistas <span class="tiny muted">${ear.length}/${RK_A.length}</span></h3><button type="button" class="btn sm" data-act="rkach">${V.rk.ach?'Ver só as próximas':'Ver todas'}</button></div><div class="rk-ach">${ach}</div>${rkAtCard()}
   <div class="tiny muted" style="text-align:center;line-height:1.5">XP = 1 por minuto de estudo + 3 por questão + 2 por acerto + bônus das conquistas (só no Total). Quadrados: últimos 7 dias (verde estudou, azul descanso, laranja atestado, vermelho falha).<br>Cada pessoa aparece depois de abrir o app. Atualiza a cada minuto.</div>`};
 ACT.rkach=()=>{V.rk.ach=!V.rk.ach;render()};ACT.rkm=b=>{V.rk.m=b.dataset.k;render()};
@@ -1351,7 +1352,7 @@ ACT.rktip=b=>toast(b.dataset.t||'');
 ACT.rkmes=b=>{V.rkm=Math.min(0,Math.max(-2,(V.rkm||0)+(+b.dataset.d)));render()};
 /* descanso e falha deduzidos dos dias: 1º dia sem estudo da semana vira descanso; os seguintes viram falha (mesmo sem a pessoa abrir o app) */
 function rkDer(x){if(x._der)return x._der;const td=today(),rs=new Set(x.rest||[]),fl=new Set(x.fail||[]),at=new Set(x.atest||[]),dm=x.dm||{},f=Object.keys(dm).concat(x.rest||[],x.fail||[]).sort()[0],wr={};rs.forEach(r=>wr[weekStart(r)]=1);
-  if(f){let d=f,g=0;while(d<td&&g++<120){if(!(dm[d]>0)&&!rs.has(d)&&!fl.has(d)&&!at.has(d)){const w=weekStart(d);if(wr[w])fl.add(d);else{rs.add(d);wr[w]=1}}d=addDays(d,1)}}
+  if(f){let d=f,g=0;while(d<td&&g++<120){if(!okDay(dm[d]||0,(x.dq||{})[d]||0,d)&&!rs.has(d)&&!fl.has(d)&&!at.has(d)){const w=weekStart(d);if(wr[w])fl.add(d);else{rs.add(d);wr[w]=1}}d=addDays(d,1)}}
   try{Object.defineProperty(x,'_der',{value:{rest:rs,fail:fl,at:at},enumerable:false,configurable:true})}catch(e){}return {rest:rs,fail:fl,at:at}}
 function atRanges(){const a=(cfg().atest||[]).slice().sort(),o=[];a.forEach(d=>{const l=o[o.length-1];if(l&&addDays(l[1],1)===d)l[1]=d;else o.push([d,d])});return o}
 function rkAtCard(){const R=atRanges(),t=today();
@@ -1366,8 +1367,8 @@ ACT.atestdel=async b=>{const a=b.dataset.a,e=b.dataset.b,c=cfg();await put('sett
 const RK_START='2026-11-22';
 function rkCh(x){const td=today(),dm=x.dm,rs=new Set(x.rest||[]),fl=new Set(x.fail||[]),at=new Set(x.atest||[]),wr={},o={ok:0,fl:0,mins:0,st:[],nd:!dm};rs.forEach(r=>wr[weekStart(r)]=1);
   for(let i=0;i<30;i++){const d=addDays(RK_START,i);let s='';
-    if(d>td)s='fut';else if(!dm)s='nd';else{const mn=dm[d]||0;
-      if(mn>0){s='l'+(mn>=180?4:mn>=90?3:mn>=30?2:1);o.ok++;o.mins+=mn}
+    if(d>td)s='fut';else if(!dm)s='nd';else{const mn=dm[d]||0,qn=(x.dq||{})[d]||0;o.mins+=mn;
+      if(okDay(mn,qn,d)){s='l'+(mn>=180?4:mn>=90?3:mn>=30?2:1);o.ok++}
       else if(at.has(d))s='at';
       else if(d===td)s=rs.has(d)?'rs':'';
       else if(rs.has(d))s='rs';
@@ -1375,6 +1376,11 @@ function rkCh(x){const td=today(),dm=x.dm,rs=new Set(x.rest||[]),fl=new Set(x.fa
       else{const w=weekStart(d);if(wr[w]){s='fl';o.fl++}else{s='rs';wr[w]=1}}}
     o.st.push([d,s])}
   return o}
+function rkGoal(own){const t=today(),m=Math.round((own.dm||{})[t]||0),q=(own.dq||{})[t]||0,ok=okDay(m,q,t),pm=Math.min(100,Math.round(m/60*100)),pq=Math.min(100,Math.round(q/20*100));
+  return `<div class="rk-row" style="display:block;padding:12px;margin:0 0 12px;${ok?'border-color:var(--ok)':''}"><div class="row" style="gap:8px"><b class="grow">Meta de hoje</b><span class="rkch-c ${ok?'ok':'nd'}">${ok?'Cumprida':'Em andamento'}</span></div>
+  <div class="tiny muted" style="margin:8px 0 4px;display:flex;justify-content:space-between"><span>Estudo</span><span>${m} / 60 min</span></div><div class="rk-bar" style="height:7px"><i style="width:${pm}%"></i></div>
+  <div class="tiny muted" style="margin:8px 0 4px;display:flex;justify-content:space-between"><span>Questões</span><span>${q} / 20</span></div><div class="rk-bar" style="height:7px"><i style="width:${pq}%"></i></div>
+  <div class="tiny muted" style="margin-top:8px;line-height:1.4">${t<RK_RULE?'A regra vale a partir de '+fdate(RK_RULE).slice(0,5)+': 60 min de estudo e 20 questões por dia.':'Precisa das duas metas. Sem elas o dia conta como descanso (o 1º da semana) ou como falha.'}</div></div>`}
 function rkMonth(all,me){
   const td=today(),n=Math.max(0,Math.min(30,Math.round((new Date(td+'T12:00:00')-new Date(RK_START+'T12:00:00'))/864e5)+1)),end=addDays(RK_START,29),started=td>=RK_START;
   const L=all.map(x=>({x,c:rkCh(x)})).sort((a,b)=>(a.c.nd-b.c.nd)||((a.c.fl>0)-(b.c.fl>0))||b.c.ok-a.c.ok||String(a.x.name).localeCompare(String(b.x.name)));
@@ -1386,7 +1392,7 @@ function rkMonth(all,me){
     const cells=c.st.map(([d,s],i)=>{const mn=((x.dm||{})[d]||0),tip=fdate(d)+' · '+(s==='at'?'Atestado: livre de estudo':s==='rs'?'Dia de descanso':s==='fl'?'Dia sem estudo (falhou)':s==='nd'?'Sem dados deste dia (a pessoa precisa abrir o app atualizado)':s==='fut'?'Ainda não chegou':hm(mn)+' de estudo');
       return `<div class="rkc ${s} ${d===td?'now':''}" data-act="rktip" data-t="${tip}">${s==='fl'?'×':i+1}</div>`}).join('');
     return `<div class="rk-row" style="display:block;padding:12px;${you?'border-color:var(--accent)':''}"><div class="row" style="gap:10px">${rkAv(x.name,32)}<div class="grow" style="min-width:0"><div style="font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name||'Usuário')}${you?' <span class="tiny muted">(você)</span>':''}</div><div class="tiny muted">${c.nd?'—':c.ok+' '+(c.ok===1?'dia estudado':'dias estudados')+' · '+hm(c.mins)}</div></div>${chip}</div><div class="rkch-g">${cells}</div></div>`}).join('');
-  return hero+lg+cards+rkAtCard()+`<div class="tiny muted" style="text-align:center;line-height:1.5;margin-top:12px">Quem estuda todos os dias chega ao fim sem falhar. O 1º dia sem estudo da semana é descanso; os seguintes são falha. Atestado fica livre. Toque num dia para ver o tempo.</div>`}
+  return hero+lg+cards+rkAtCard()+`<div class="tiny muted" style="text-align:center;line-height:1.5;margin-top:12px">Dia válido (a partir de 25/11): 60 min de estudo + 20 questões. Quem cumpre todos os dias chega ao fim sem falhar. O 1º dia sem estudo da semana é descanso; os seguintes são falha. Atestado fica livre. Toque num dia para ver o tempo.</div>`}
 
 /* ===== Duelos (liga de elite: top 6 do ranking geral) ===== */
 const DUEL_STAKE=100,DUEL_N=6,DUEL_FIRST='2026-11-25',DUEL_FIRST_END='2026-11-29';
