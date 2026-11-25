@@ -1269,13 +1269,13 @@ function rkStats(){
   const qa={};ans.forEach(q=>{if(q.date)qa[q.date]=(qa[q.date]||0)+1});const md={};S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date&&okDay(x.minutes,qa[x.date]||0,x.date))md[x.date]=1});const dm={},d70=addDays(t,-70);S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date&&x.date>=d70)dm[x.date]=Math.round(x.minutes)});
   const dq={};ans.forEach(q=>{if(q.date&&q.date>=d70)dq[q.date]=(dq[q.date]||0)+1});const rs=new Set((cfg().rest||[]).concat(cfg().atest||[]));let k=t;if(!md[k])k=addDays(k,-1);let sk=0;while(md[k]||rs.has(k)){if(md[k])sk++;k=addDays(k,-1)}
   let skb=0,run=0,prev='';const brid=(a,b)=>{let x=addDays(a,1);while(x<b){if(!rs.has(x))return false;x=addDays(x,1)}return true};Object.keys(md).sort().forEach(d=>{run=prev&&brid(prev,d)?run+1:1;prev=d;if(run>skb)skb=run});
-  return {sk,skb:Math.max(skb,sk),name:pfName(),q:ans.length,qok:ans.filter(isOk).length,min:Math.round(mins),wq:wk.length,wqok:wk.filter(isOk).length,wmin:Math.round(wm),dm,dq,rest:(cfg().rest||[]).filter(x=>x>=d70),atest:(cfg().atest||[]).filter(x=>x>=d70),dbet:(cfg().duel||{}).bet||'',dtn:(cfg().duel||{}).tn||null,fail:(cfg().fail||[]).filter(x=>x>=d70),upd:Date.now(),wk:t}}
+  return {sk,skb:Math.max(skb,sk),name:pfName(),q:ans.length,qok:ans.filter(isOk).length,min:Math.round(mins),wq:wk.length,wqok:wk.filter(isOk).length,wmin:Math.round(wm),dm,dq,rest:(cfg().rest||[]).filter(x=>x>=d70),atest:(cfg().atest||[]).filter(x=>x>=d70),dbet:(cfg().duel||{}).bet||'',dtn:(cfg().duel||{}).tn||null,dch:(cfg().dch||null),fail:(cfg().fail||[]).filter(x=>x>=d70),upd:Date.now(),wk:t}}
 async function rkSync(force){
   try{if(!RDB||!PFID)return;const now=Date.now();if(!force&&V.rk.t&&now-V.rk.t<60000)return;if(!V.loaded.sessions||!V.loaded.questions)return;V.rk.t=now;
     await RDB.collection('rank').doc(PFID).set(rkStats())}catch(e){console.error('rank',e)}}
 function rkSoon(){try{if(!RDB||!PFID||V.rkTm)return;const w=Math.max(1500,30000-(Date.now()-(V.rkLast||0)));V.rkTm=setTimeout(()=>{V.rkTm=0;try{const st=rkStats(),k=JSON.stringify([st.q,st.qok,st.wq,st.wqok,st.min,st.wmin,st.sk]);if(k===V.rkKey)return;V.rkKey=k;V.rkLast=Date.now();rkSync(true)}catch(e){}},w)}catch(e){}}
 function rkListen(){try{if(!RDB)return;duelListen();RDB.collection('rank').onSnapshot(sn=>{V.rk.docs=sn.docs.map(d=>Object.assign({id:d.id},d.data()));if(ADMIN){const X=['maria cristina','usuário de teste','usuario de teste'];V.rk.docs.filter(d=>d.id!==PFID&&X.includes(String(d.name||'').trim().toLowerCase())&&!(V.rkDel||(V.rkDel={}))[d.id]).forEach(d=>{V.rkDel[d.id]=1;RDB.collection('rank').doc(d.id).delete().then(()=>{V.rk.docs=V.rk.docs.filter(x=>x.id!==d.id);scheduleRender()}).catch(e=>{console.error(e)})})}if(V.view==='rank')scheduleRender()},e=>console.error('rank',e))}catch(e){console.error(e)}}
-IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.flame='<path d="M12 3c1 4 5 6 5 11a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/>';IC.bolt='<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>';IC.clock='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';IC.crown='<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>';
+IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.flame='<path d="M12 3c1 4 5 6 5 11a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/>';IC.bolt='<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>';IC.clock='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';IC.crown='<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>';
 const rkI=(n,c)=>`<svg class="i rk-i" viewBox="0 0 24 24"${c?` style="color:${c}"`:''}>${IC[n]||''}</svg>`;
 const RK_T=['Novato','Aprendiz','Estudante','Focado','Dedicado','Veterano','Mestre','Elite','Lenda'];
 const rkNeed=l=>100*(l-1)*(l-1),rkLv=xp=>{let l=1;while(xp>=rkNeed(l+1))l++;return l},rkTitle=l=>RK_T[Math.min(l-1,RK_T.length-1)];
@@ -1304,7 +1304,7 @@ const RK_A=[
 ['ch','trophy','Desafio: 30 dias sem falhar',d=>{const c=rkCh(d);return c.nd||c.fl?0:c.ok},30,'dias',1000,'Campeão do desafio']];
 const rkEarned=d=>RK_A.filter(a=>a[3](d)>=a[4]),rkBonus=d=>rkEarned(d).reduce((n,a)=>n+a[6],0),rkTitleOf=d=>{const e=rkEarned(d).filter(a=>a[7]);return e.length?e[e.length-1][7]:''};
 const rkBd=(d,n)=>{const e=rkEarned(d);if(!e.length)return '';return e.slice(-n).map(a=>rkI(a[1])).join('')+(e.length>n?`<span class="tiny muted">+${e.length-n}</span>`:'')};
-const rkXp=(d,wk)=>Math.max(0,Math.round((wk?d.wmin:d.min||0)||0)+((wk?d.wq:d.q)||0)+(wk?0:rkBonus(d)+((V.rk.dl&&V.rk.dl[d.id])||0)));
+const rkXp=(d,wk)=>Math.max(0,Math.round((wk?d.wmin:d.min||0)||0)+((wk?d.wq:d.q)||0)+(wk?0:rkBonus(d)+((V.rk.dl&&V.rk.dl[d.id])||0)+((V.rk.cdl&&V.rk.cdl[d.id])||0)));
 const rkAv=(n,sz)=>{n=String(n||'?');let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%360;return `<span class="rk-av" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.42)}px;background:linear-gradient(135deg,hsl(${h} 65% 48%),hsl(${(h+40)%360} 70% 38%))">${esc(n.trim().charAt(0).toUpperCase())}</span>`};
 const RK_CSS=`<style>
 .rk-av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:800;flex:none}
@@ -1328,9 +1328,11 @@ VIEWS.rank=()=>{
   const P=V.rk.per,wk=P==='week',me=PFID,t=today(),M=V.rk.m||'xp';
   const mine=V.rk.docs.find(d=>d.id===me);if(mine&&mine.upd&&Date.now()-mine.upd>3e5)rkSync(true);
   const own=Object.assign({id:me},rkStats()),all=V.rk.docs.filter(d=>d.id!==me).concat([Object.assign({id:me},own)]);
+  try{chCalc(all)}catch(e){console.error('ch',e)}
+  if(V.rk.play)return chPlay();
   const seg=(k,l)=>`<button class="chip ${P===k?'sel':''}" data-act="rkper" data-k="${k}">${l}</button>`,mseg=(k,l)=>`<button class="chip ${M===k?'sel':''}" data-act="rkm" data-k="${k}">${l}</button>`;
-  const top=head('Ranking - Desafio','')+RK_CSS+`<div class="rk-seg">${seg('week',rkI('flame')+' Semana')}${seg('all',rkI('trophy')+' Total')}${seg('duel',rkI('swords')+' Duelos')}${seg('cal',rkI('cal')+' Calendário')}</div>`;
-  if(P==='cal')return top+rkMonth(all,me);if(P==='duel')return top+duelView(all,me);
+  const top=head('Ranking - Desafio','')+RK_CSS+chBanner(me)+`<div class="rk-seg">${seg('week',rkI('flame')+' Semana')}${seg('all',rkI('trophy')+' Total')}${seg('duel',rkI('swords')+' Duelos')}${seg('chal',rkI('bolt')+' Desafios')}${seg('cal',rkI('cal')+' Calendário')}</div>`;
+  if(P==='chal')return top+chView(all,me);if(P==='cal')return top+rkMonth(all,me);if(P==='duel')return top+duelView(all,me);
   const MX={xp:{v:d=>rkXp(d,wk),f:v=>v+' XP'},t:{v:d=>(wk?d.wmin:d.min)||0,f:hm},q:{v:d=>(wk?d.wq:d.q)||0,f:v=>v+' questões'},s:{v:d=>d.sk||0,f:v=>v+(v===1?' dia':' dias')}}[M];
   const L=all.slice().sort((a,b)=>MX.v(b)-MX.v(a)||String(a.name).localeCompare(String(b.name))),lead=Math.max(1,MX.v(L[0]||{})),pos=L.findIndex(d=>d.id===me)+1;
   const ear=rkEarned(own),tt=rkTitleOf(own),tx=rkXp(own,false),lv=rkLv(tx),a0=rkNeed(lv),a1=rkNeed(lv+1),pc=Math.round((tx-a0)/(a1-a0)*100);
@@ -1466,6 +1468,74 @@ function duelView(all,me){
   const lb=Object.entries(V.rk.rec||{}).sort((a,b)=>b[1].w-a[1].w||a[1].l-b[1].l).slice(0,6).filter(e=>e[1].w+e[1].l+e[1].t>0).map(([id,r],i)=>`<div class="rk-row" style="grid-template-columns:28px auto minmax(0,1fr) auto;padding:8px 12px"><div class="pos">${i+1}º</div>${rkAv(nm(id),30)}<div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700">${esc(nm(id))}${id===me?' <span class="tiny muted">(você)</span>':''}</div><b>${r.w}V <span class="tiny muted">${r.t}E ${r.l}D</span></b></div>`).join('');
   return lg+hero+tiles+(others?`<h3 style="margin:6px 0 8px;font-size:16px">${act?'Confrontos da rodada':'Quem duela'}</h3>${others}`:'')+hist+(lb?`<h3 style="margin:16px 0 8px;font-size:16px">Placar de vitórias</h3>${lb}`:'')+
   `<div class="tiny muted" style="text-align:center;line-height:1.5;margin-top:14px">Pontos = 1 por minuto de estudo + 1 por questão, contados na rodada. Quem fizer mais pontos vence: ganha ${DUEL_STAKE} XP e o perdedor perde ${DUEL_STAKE}. Bônus do vencedor: +25 por vitória seguida (até +100), +50 de virada (estava atrás na metade da rodada), +50 de atropelo (pelo menos o dobro dos pontos). O destaque da rodada, com mais pontos entre todos, ganha +100 XP. Se os dois aceitarem, a aposta dobra. Empate não muda nada. Se alguém do duelo estiver de atestado na rodada, o duelo é cancelado: ninguém perde XP e o rival ganha metade do XP da vitória. O resultado fecha 2 dias depois do fim da rodada.</div>`}
+
+/* ---- desafios 1x1 por matéria ---- */
+const CH_N=10,CH_STAKE=30,CH_EXP=48*36e5,CH_PART=10,CH_DAY=2;
+const chAlts=q=>String(q.a||'').split('\n').map(x=>x.trim()).filter(Boolean);
+const chOpts=q=>{const a=chAlts(q);return a.length?a.map((t,i)=>['ABCDE'[i],t]):[['C','Certo'],['E','Errado']]};
+const chRaw=q=>{const a=String(q.alts||'').split('\n').map(x=>x.trim()).filter(Boolean),g=String(q.gab||'').trim().toUpperCase()[0]||'';return a.length?'ABCDE'.indexOf(g)>=0&&'ABCDE'.indexOf(g)<a.length:g==='C'||g==='E'};
+const chPool=sid=>S.questions.filter(q=>q.subjectId===sid&&String(q.statement||'').trim().length>10&&chRaw(q));
+function chPick(sid){const sh=a=>a.map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]),P=chPool(sid);if(P.length<CH_N)return null;
+  return sh(P.filter(q=>!q.marked)).concat(sh(P.filter(q=>q.marked))).slice(0,CH_N).map(q=>({s:String(q.statement).slice(0,1200),a:String(q.alts||'').slice(0,1500),g:String(q.gab).trim().toUpperCase()[0],c:String(q.comment||'').slice(0,800)}))}
+function chSave(fn){const c=cfg(),d=Object.assign({c:{},a:{}},c.dch||{});d.c=Object.assign({},d.c);d.a=Object.assign({},d.a);fn(d);return put('settings','main',Object.assign({},strip(c),{dch:d})).then(()=>{try{rkSync(true)}catch(e){}})}
+function chCalc(docs){const now=Date.now(),A={},L=[],dl={},rec={},me=PFID,pl=V.rk.play;
+  const Rc=id=>rec[id]||(rec[id]={w:0,l:0,t:0}),add=(id,n)=>{dl[id]=(dl[id]||0)+n};
+  docs.forEach(d=>{const x=d.dch;if(!x)return;Object.values(x.a||{}).forEach(e=>{A[e.id]=Object.assign({u:d.id},e)})});
+  docs.forEach(d=>{const x=d.dch;if(!x)return;Object.values(x.c||{}).forEach(c=>{const a=A[c.id],ad=a&&a.u===c.to?a:null;let st='pend',w=null,an=null,at=null;
+    if(ad){if(ad.n==null){const act=ad.u===me&&pl&&pl.id===c.id;if(act||(ad.u!==me&&now-(ad.st||0)<18e5))st='play';else{an=0;at=9e9}}else{an=ad.n;at=ad.t||0}
+      if(st!=='play'){st='done';w=c.n>an?c.from||d.id:c.n<an?c.to:c.t<at?d.id:c.t>at?c.to:'tie';const f=d.id;
+        if(w==='tie'){Rc(f).t++;Rc(c.to).t++}else{const lo=w===f?c.to:f;add(w,CH_STAKE);add(lo,-CH_STAKE);Rc(w).w++;Rc(lo).l++}}}
+    else if(now>=c.ts+CH_EXP){st='exp';add(d.id,CH_PART)}
+    L.push({id:c.id,from:d.id,fromN:c.fn||d.name,to:c.to,toN:c.toN,sj:c.sj,ts:c.ts,n:c.n,t:c.t,st,w,an,at,qs:c.qs})})});
+  V.rk.ch={list:L,rec};V.rk.cdl=dl;
+  const mine=(cfg().dch||{}).c||{},old=L.filter(x=>x.from===me&&(x.st==='done'||x.st==='exp')&&mine[x.id]&&mine[x.id].qs);V.rk.sw=V.rk.sw||{};
+  if(old.length&&!old.every(x=>V.rk.sw[x.id])){old.forEach(x=>{V.rk.sw[x.id]=1});chSave(d=>{old.forEach(x=>{if(d.c[x.id]){const e=Object.assign({},d.c[x.id]);delete e.qs;d.c[x.id]=e}})})}}
+function chBanner(me){const L=(V.rk.ch&&V.rk.ch.list)||[],n=L.filter(x=>x.to===me&&x.st==='pend'&&x.qs&&x.ts+CH_EXP>Date.now()).length;if(!n||V.rk.per==='chal')return '';
+  return `<div class="rk-row" data-act="rkper" data-k="chal" style="display:block;cursor:pointer;padding:12px;margin:0 0 12px;border-color:var(--accent)"><div class="row" style="gap:8px">${rkI('bolt','var(--accent)')}<b class="grow">Você tem ${n} ${n===1?'desafio esperando':'desafios esperando'}</b><span class="rkch-c ok">Ver</span></div></div>`}
+function chOppo(all,me){return all.filter(d=>d.id!==me&&d.id!=='admin'&&d.name&&!/teste|test|maria cristina/i.test(d.name)&&(d.upd||0)>Date.now()-14*864e5).sort((a,b)=>String(a.name).localeCompare(String(b.name)))}
+ACT.chnew=()=>{const me=PFID,all=V.rk.docs.filter(d=>d.id!==me),L=(V.rk.ch&&V.rk.ch.list)||[],td=today(),
+  nt=L.filter(x=>x.from===me&&new Date(x.ts).toLocaleDateString('sv')===td).length;
+  if(nt>=CH_DAY){toast('Limite de '+CH_DAY+' desafios por dia');return}
+  const op=chOppo(all,me).filter(d=>!L.some(x=>x.from===me&&x.to===d.id&&(x.st==='pend'||x.st==='play'))),sj=S.subjects.map(s=>[s,chPool(s.id).length]).filter(x=>x[1]>=CH_N);
+  if(!op.length){toast('Ninguém disponível para desafiar agora');return}
+  if(!sj.length){toast('Nenhuma matéria tem '+CH_N+' questões com gabarito');return}
+  sheet('Desafiar',`<div class="tiny muted" style="margin-bottom:8px">Você responde ${CH_N} questões agora. O rival tem 48h para responder as mesmas. Quem acertar mais ganha ${CH_STAKE} XP; o outro perde ${CH_STAKE}. Empate: desempata o menor tempo.</div><label class="tiny muted">Quem desafiar</label><select name="u" style="width:100%;margin-bottom:10px">${op.map(d=>`<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}</select><label class="tiny muted">Matéria</label><select name="s" style="width:100%">${sj.map(([s,n])=>`<option value="${esc(s.id)}">${esc(s.name)} (${n} questões)</option>`).join('')}</select>`,async o=>{
+    const qs=chPick(o.s),u=op.find(d=>d.id===o.u),s=S.subjects.find(x=>x.id===o.s);if(!qs||!u||!s){toast('Não foi possível montar o desafio');return false}
+    V.rk.play={m:'make',id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),to:u.id,toN:u.name,sjN:s.name,qs,i:0,ok:0,ms:0,q0:Date.now(),rev:null,done:0};V.rk.per='chal'},{save:'Começar'})};
+ACT.chacc=b=>{const me=PFID,x=((V.rk.ch&&V.rk.ch.list)||[]).find(y=>y.id===b.dataset.id&&y.to===me&&y.st==='pend'&&y.qs);if(!x||x.ts+CH_EXP<Date.now()){toast('Desafio indisponível');return}
+  V.rk.play={m:'acc',id:x.id,from:x.from,fromN:x.fromN,sjN:x.sj,qs:x.qs,cn:x.n,ct:x.t,i:0,ok:0,ms:0,q0:Date.now(),rev:null,done:0};chSave(d=>{d.a[x.id]={id:x.id,from:x.from,st:Date.now(),n:null}});render()};
+function chFinish(p){p.done=1;const me=PFID;
+  if(p.m==='make')chSave(d=>{d.c[p.id]={id:p.id,from:me,to:p.to,toN:p.toN,fn:pfName(),sj:p.sjN,ts:Date.now(),n:p.ok,t:p.ms,qs:p.qs}});
+  else{p.w=p.ok>p.cn?me:p.ok<p.cn?p.from:p.ms<p.ct?me:p.ms>p.ct?p.from:'tie';chSave(d=>{d.a[p.id]={id:p.id,from:p.from,st:(d.a[p.id]||{}).st||Date.now(),n:p.ok,t:p.ms,ts:Date.now()}})}}
+ACT.chans=b=>{const p=V.rk.play;if(!p||p.rev||p.done)return;const q=p.qs[p.i],v=b.dataset.v,ok=v===q.g;p.ok+=ok?1:0;p.ms+=Date.now()-p.q0;p.rev={v,ok};render()};
+ACT.chnext=()=>{const p=V.rk.play;if(!p||!p.rev)return;p.i++;if(p.i>=p.qs.length)chFinish(p);else{p.rev=null;p.q0=Date.now()}render()};
+ACT.chquit=()=>{const p=V.rk.play;if(!p)return;if(p.done||p.m==='make'){V.rk.play=null;render();return}confirmDel('Sair agora conta como derrota nas questões que faltam. Sair mesmo?',()=>{p.ms+=Date.now()-p.q0;chFinish(p)})};
+ACT.chend=()=>{V.rk.play=null;V.rk.per='chal';render()};
+function chPlay(){const p=V.rk.play,me=PFID,H=head('Desafio','')+RK_CSS,sec=ms=>Math.round(ms/1000)+'s';
+  if(p.done){const mk=p.m==='make',w=p.w;
+    const msg=mk?`Desafio enviado para <b>${esc(p.toN)}</b>. Ele tem 48h para responder as mesmas questões. Se não aceitar, você ganha ${CH_PART} XP.`:w==='tie'?'Empate total. Ninguém ganha nem perde XP.':w===me?`Você venceu e ganha <b>${CH_STAKE} XP</b>.`:`Você perdeu ${CH_STAKE} XP. Revanche?`;
+    return H+`<div class="rk-hero"><div class="tiny muted" style="font-weight:800;letter-spacing:.06em">${esc(p.sjN)}</div><div class="rk-vs"><div class="rk-vp"><b>Você</b><span class="n">${p.ok}</span><span class="tiny muted">${sec(p.ms)}</span></div><div class="rk-vsx">${mk?'':'VS'}</div>${mk?'<div></div>':`<div class="rk-vp"><b>${esc(p.fromN||'Rival')}</b><span class="n">${p.cn}</span><span class="tiny muted">${sec(p.ct)}</span></div>`}</div><div class="rk-chase" style="text-align:center">${msg}</div><div class="row" style="margin-top:12px"><button class="btn pri" data-act="chend">Voltar aos desafios</button></div></div>`}
+  const q=p.qs[p.i],o=chOpts(q),rev=p.rev,g=q.g,al=chAlts(q).length>0;
+  const btn=([v,tx])=>{let st='';if(rev){if(v===g)st='border-color:var(--ok);background:rgba(52,199,89,.16);';else if(v===rev.v)st='border-color:var(--bad);background:rgba(255,69,58,.16);'}
+    return `<button class="item" ${rev?'disabled':`data-act="chans" data-v="${v}"`} style="display:flex;gap:8px;text-align:left;width:100%;margin:5px 0;${st}"><b>${al?v+')':''}</b><span class="t" style="white-space:normal">${esc(tx)}</span>${rev&&v===g?'<span>✅</span>':rev&&v===rev.v?'<span>❌</span>':''}</button>`};
+  const gt=o.find(x=>x[0]===g),cm=q.c?(typeof comHtml==='function'?comHtml(q.c):`<div style="white-space:pre-wrap">${esc(q.c)}</div>`):'<span class="muted">Sem comentário no material.</span>';
+  return H+`<div class="row" style="gap:8px;margin-bottom:8px"><b class="grow">${p.m==='make'?'Desafio a '+esc(p.toN):'Desafio de '+esc(p.fromN||'rival')}</b><span class="rkch-c ok">${esc(p.sjN)}</span><button class="btn sm ghost" data-act="chquit">Sair</button></div>
+  <div class="rk-bar" style="height:6px;margin-bottom:10px"><i style="width:${Math.round(p.i/p.qs.length*100)}%"></i></div>
+  <div class="card" style="padding:12px"><div class="tiny muted">Questão ${p.i+1} de ${p.qs.length}</div><div style="margin:6px 0 8px;line-height:1.5;white-space:pre-wrap">${esc(q.s)}</div>${o.map(btn).join('')}
+  ${rev?`<div style="margin-top:10px;padding:10px;border-radius:10px;background:${rev.ok?'rgba(52,199,89,.12)':'rgba(255,69,58,.12)'}"><b>${rev.ok?'Acertou':'Errou'}</b> · Gabarito: <b>${esc(al?g+') '+(gt?gt[1]:''):gt?gt[1]:g)}</b></div><div style="margin-top:8px;line-height:1.5">${cm}</div><div class="row" style="margin-top:12px"><button class="btn pri" data-act="chnext" style="width:100%">${p.i+1>=p.qs.length?'Ver resultado':'Próxima'}</button></div>`:''}</div>`}
+function chView(all,me){const L=(V.rk.ch&&V.rk.ch.list)||[],now=Date.now(),R=(V.rk.ch&&V.rk.ch.rec||{})[me]||{w:0,l:0,t:0},nm=id=>{const x=all.find(d=>d.id===id);return(x&&x.name)||'Usuário'},hl=x=>Math.max(1,Math.ceil((x.ts+CH_EXP-now)/36e5))+'h',sec=ms=>Math.round(ms/1000)+'s';
+  const inc=L.filter(x=>x.to===me&&x.st==='pend'&&x.qs&&x.ts+CH_EXP>now),out=L.filter(x=>x.from===me&&(x.st==='pend'||x.st==='play')),fin=L.filter(x=>(x.from===me||x.to===me)&&(x.st==='done'||x.st==='exp')).sort((a,b)=>b.ts-a.ts).slice(0,10);
+  const row=(l,r,c)=>`<div class="rk-row" style="display:block;padding:10px 12px"><div class="row" style="gap:8px"><div class="grow" style="min-width:0">${l}</div>${r}</div>${c||''}</div>`;
+  const hero=`<div class="rk-hero"><div class="row"><div class="grow"><b style="font-size:17px">Desafio 1×1</b><div class="tiny muted" style="margin-top:4px;line-height:1.45">Escolha um rival e uma matéria. Vocês respondem as mesmas ${CH_N} questões. Quem acertar mais ganha ${CH_STAKE} XP e o outro perde ${CH_STAKE}.</div></div></div><div class="row" style="margin-top:12px"><button class="btn pri" data-act="chnew" style="width:100%">Desafiar alguém</button></div></div>`;
+  const tiles=`<div class="rk-tiles" style="margin:0 0 12px"><div class="rk-tile"><span class="tiny muted">Vitórias</span><b>${R.w}</b></div><div class="rk-tile"><span class="tiny muted">Derrotas</span><b>${R.l}</b></div><div class="rk-tile"><span class="tiny muted">Empates</span><b>${R.t}</b></div></div>`;
+  const sh=(t,a)=>a?`<h3 style="margin:14px 0 8px;font-size:16px">${t}</h3>${a}`:'';
+  const hrow=x=>{if(x.st==='exp')return x.from===me?row(`<b>${esc(nm(x.to))}</b><div class="tiny muted">${esc(x.sj)} · não aceitou</div>`,`<span class="rkch-c nd">+${CH_PART} XP</span>`):row(`<b>${esc(nm(x.from))}</b><div class="tiny muted">${esc(x.sj)} · você deixou expirar</div>`,`<span class="rkch-c nd">Expirou</span>`);
+    const my=x.from===me?x.n:x.an,ot=x.from===me?x.an:x.n,mt=x.from===me?x.t:x.at,ott=x.from===me?x.at:x.t,o=x.from===me?x.to:x.from,w=x.w;
+    return row(`<b>${esc(nm(o))}</b><div class="tiny muted">${esc(x.sj)} · ${my}×${ot} acertos · ${mt>=9e9?'desistiu':sec(mt)+' × '+sec(ott)}</div>`,`<span class="rkch-c ${w==='tie'?'nd':w===me?'ok':'fl'}">${w==='tie'?'Empate':w===me?'Venceu +'+CH_STAKE:'Perdeu −'+CH_STAKE}</span>`)};
+  return hero+tiles+sh('Esperando você',inc.map(x=>row(`<b>${esc(nm(x.from))}</b> te desafiou<div class="tiny muted">${esc(x.sj)} · expira em ${hl(x)}</div>`,`<button class="btn sm pri" data-act="chacc" data-id="${x.id}">Aceitar</button>`)).join(''))
+   +sh('Aguardando rival',out.map(x=>row(`<b>${esc(nm(x.to))}</b><div class="tiny muted">${esc(x.sj)} · ${x.st==='play'?'respondendo agora':'expira em '+hl(x)} · você fez ${x.n}/${CH_N}</div>`,`<span class="rkch-c nd">Pendente</span>`)).join(''))
+   +sh('Histórico',fin.map(hrow).join(''))
+   +`<div class="tiny muted" style="text-align:center;line-height:1.5;margin-top:14px">Limite de ${CH_DAY} desafios por dia. O rival tem 48h para aceitar; se não aceitar, você ganha ${CH_PART} XP e ninguém perde nada. Empate em acertos: vence quem respondeu mais rápido. Estas questões não contam no tempo de estudo nem na meta do dia.</div>`}
 
 setTimeout(()=>{try{rkSync(true)}catch(e){}},12000);setInterval(()=>{try{if(document.visibilityState==='visible')rkSync()}catch(e){}},300000);
 
