@@ -6,14 +6,7 @@ html,body,#main{overflow-anchor:none}
 .ecop{position:absolute;left:50%;top:50%;opacity:0;animation:ecoburst 1s ease-out both}
 @keyframes ecorise{0%{opacity:0;transform:translate(-50%,24px) scale(.7)}15%{opacity:1;transform:translate(-50%,0) scale(1.08)}30%{transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-70px) scale(1)}}
 @keyframes ecospin{50%{transform:rotateY(180deg)}}@keyframes ecoburst{0%{opacity:1;transform:translate(0,0)}100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
-#bnav{display:none}
-@media(max-width:959px){#bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:44;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line);gap:2px}
-#bnav button{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;color:var(--muted);padding:6px 2px;border-radius:12px;font-size:11px;font-weight:700}
-#bnav button.on{color:var(--accent);background:var(--accent-soft)}#bnav .i{width:22px;height:22px}
-#bnav .bdg{position:absolute;top:2px;left:calc(50% + 6px);background:var(--accent);color:var(--accent-fg);border-radius:99px;font-style:normal;font-size:10px;font-weight:800;padding:0 5px;min-width:16px;text-align:center;line-height:16px}
-.col{padding-bottom:96px}
-#tpill{bottom:calc(70px + env(safe-area-inset-bottom,0px))!important}.sdfab{bottom:calc(120px + env(safe-area-inset-bottom,0px))!important}#nzbar{bottom:72px!important}.toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))!important}.rk-me{bottom:calc(72px + env(safe-area-inset-bottom,0px))!important}#busyPill{bottom:calc(130px + env(safe-area-inset-bottom,0px))!important}#mrback{bottom:calc(76px + env(safe-area-inset-bottom,0px))!important}
-body:has(.mmfs) #bnav,body:has(#fndbar) #bnav{display:none}}
+
 </style></head><body>
 <!-- v235 -->
 
@@ -1157,7 +1150,7 @@ const SUBG={rev:'rev',errnotes:'rev',perf:'perf',hist:'perf'};
 function subTabs(v){const g=SUBG[v];if(!g)return '';return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 12px">${SUBT[g].map(([k,l])=>`<button type="button" class="chip ${v===k?'sel':''}" data-act="goto" data-v="${k}" data-p="{}" style="justify-content:center;padding:10px 6px">${l}</button>`).join('')}</div>`}
 ACT.menuav=()=>{V.rk.per='loja';V.rk.avc=false;V.stack=[];closeMenu();go('rank',{},false)};
 function navProfile(){try{if(!PFID)return '';const o=ownS(),e=ecoE(),lv=rkLv(rkXp(o,false)),av=e.eq&&e.eq.av||undefined;return `<button type="button" data-act="menuav" style="display:flex;align-items:center;gap:10px;width:100%;margin:2px 0 6px;padding:10px;border-radius:14px;border:1px solid var(--line);background:var(--surface2);color:inherit;text-align:left">${rkAv(pfName(),44,undefined,av)}<span style="min-width:0;flex:1"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pfName())}</b><span class="tiny muted">Nível ${lv} · ${ecoCoin(14)} ${ecoBal(o)}</span></span></button>`}catch(x){return ''}}
-function bnavRender(){let el=document.getElementById('bnav');if(!el){el=document.createElement('nav');el.id='bnav';el.setAttribute('aria-label','Atalhos');document.body.appendChild(el)}
+function bnavRender(){{const x=document.getElementById('bnav');if(x)x.remove();return}let el=document.getElementById('bnav');if(!el){el=document.createElement('nav');el.id='bnav';el.setAttribute('aria-label','Atalhos');document.body.appendChild(el)}
   const it=[['dash','Hoje','home'],['questions','Questões','check'],['rev','Revisar','cal'],['rank','Ranking','trophy']];
   el.innerHTML=it.map(([k,l,i])=>{const on=V.view===k||(k==='rev'&&V.view==='errnotes')||(k==='dash'&&false),n=k==='dash'?alerts().filter(x=>x.lvl!=='info').length:navBadge(k);return `<button type="button" class="${on?'on':''}" data-act="goto" data-v="${k}" data-p="{}">${ico(i)}<span>${l}</span>${n?`<i class="bdg">${n}</i>`:''}</button>`}).join('')+`<button type="button" data-act="menu">${ico('menu')}<span>Mais</span></button>`}
 function renderNav(){
