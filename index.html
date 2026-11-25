@@ -1,6 +1,19 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0A0A0A"><title>NEXUS</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script></head><body>
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.emo{display:inline-block;filter:brightness(0) invert(1);opacity:.92}
 :root[data-theme="light"] .emo{filter:brightness(0)}
+html,body,#main{overflow-anchor:none}
+.ecofly{position:fixed;left:50%;bottom:30%;transform:translateX(-50%);z-index:95;display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;background:var(--surface);border:2px solid #fbbf24;box-shadow:0 10px 30px rgba(0,0,0,.45);font-size:22px;animation:ecorise 1.8s ease-out both;pointer-events:none}.ecofly svg{animation:ecospin .9s ease-in-out 2}
+.ecop{position:absolute;left:50%;top:50%;opacity:0;animation:ecoburst 1s ease-out both}
+@keyframes ecorise{0%{opacity:0;transform:translate(-50%,24px) scale(.7)}15%{opacity:1;transform:translate(-50%,0) scale(1.08)}30%{transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-70px) scale(1)}}
+@keyframes ecospin{50%{transform:rotateY(180deg)}}@keyframes ecoburst{0%{opacity:1;transform:translate(0,0)}100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
+#bnav{display:none}
+@media(max-width:959px){#bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:44;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line);gap:2px}
+#bnav button{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;color:var(--muted);padding:6px 2px;border-radius:12px;font-size:11px;font-weight:700}
+#bnav button.on{color:var(--accent);background:var(--accent-soft)}#bnav .i{width:22px;height:22px}
+#bnav .bdg{position:absolute;top:2px;left:calc(50% + 6px);background:var(--accent);color:var(--accent-fg);border-radius:99px;font-style:normal;font-size:10px;font-weight:800;padding:0 5px;min-width:16px;text-align:center;line-height:16px}
+.col{padding-bottom:96px}
+#tpill{bottom:calc(70px + env(safe-area-inset-bottom,0px))!important}.sdfab{bottom:calc(120px + env(safe-area-inset-bottom,0px))!important}#nzbar{bottom:72px!important}.toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))!important}.rk-me{bottom:calc(72px + env(safe-area-inset-bottom,0px))!important}#busyPill{bottom:calc(130px + env(safe-area-inset-bottom,0px))!important}#mrback{bottom:calc(76px + env(safe-area-inset-bottom,0px))!important}
+body:has(.mmfs) #bnav,body:has(#fndbar) #bnav{display:none}}
 </style></head><body>
 <!-- v235 -->
 
@@ -723,10 +736,11 @@ const IC={
  spark:'<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/>',
  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'
 };
+IC.menu='<path d="M4 7h16M4 12h16M4 17h16"/>';
 const ico=n=>`<svg class="i" viewBox="0 0 24 24">${IC[n]||''}</svg>`;
-const NAV=[['dash','Hoje','home'],['metas','Planejamento','target'],['hist','Histórico de estudo','cal'],['study','Conteúdo','book'],['maps','Mapas mentais','brain'],['questions','Questões','check'],['errnotes','Caderno de erros','pen'],['perf','Desempenho','chart'],['rank','Ranking - Desafio','trophy'],['cards','Flashcards','cards'],['rev','Revisões','cal'],['campanha','Campanha','flag'],['kb','Conhecimento','brain'],['goals','Metas','target'],['projects','Projetos e tarefas','kanban'],['agenda','Agenda','cal'],['journal','Diário','pen'],['ai','Assistente','spark'],['profile','Perfil','user'],['settings','Ajustes','gear']];
+const NAV=[['dash','Hoje','home'],['metas','Planejamento','target'],['hist','Histórico de estudo','cal'],['study','Conteúdo','book'],['maps','Mapas','brain'],['questions','Questões','check'],['errnotes','Caderno de erros','pen'],['perf','Progresso','chart'],['rank','Ranking','trophy'],['cards','Flashcards','cards'],['rev','Revisar','cal'],['campanha','Campanha','flag'],['kb','Conhecimento','brain'],['goals','Metas','target'],['projects','Projetos e tarefas','kanban'],['agenda','Agenda','cal'],['journal','Diário','pen'],['ai','Assistente','spark'],['profile','Perfil','user'],['settings','Ajustes','gear']];
 const PROF=['goals','projects','agenda','journal','ai'];
-const NAVG=[['Hoje',['dash']],['Estudar',['study','maps','questions','cards']],['Revisar',['rev','errnotes']],['Progresso',['perf','hist','rank','metas','campanha']],['Conta',['profile','settings']]];
+const NAVG=[['Hoje',['dash','rank']],['Estudar',['study','maps','questions','cards']],['Revisar',['rev']],['Progresso',['perf','metas','campanha']],['Conta',['profile','settings']]];
 
 /* ---- entidades e formulários ---- */
 const KINDS=['nota','ideia','livro','artigo','link','vídeo','procedimento','referência','aprendizado','informação','documento'];
@@ -971,7 +985,9 @@ const goalProg=g=>{
   return g.done?100:(g.progress||0);
 };
 const taskOpen=t=>t.status!=='done';
-function alerts(){
+let _al={t:0,v:null};
+function alerts(){const n=Date.now();if(_al.v&&n-_al.t<2000)return _al.v;const v=alerts0();_al={t:n,v};return v}
+function alerts0(){
   const a=[],t=today(),now=Date.now();
   const nd=cardsDue().length;if(nd)a.push({lvl:'info',txt:nd+' card(s) para revisar hoje',v:'cards'});
   S.goals.filter(g=>g.due&&g.due<t&&goalProg(g)<100).forEach(g=>a.push({lvl:'bad',txt:'Meta atrasada: '+g.title+' (prazo '+fdate(g.due)+')',v:'goals'}));
@@ -1133,9 +1149,20 @@ async function saBoot(){
   new MutationObserver(hide).observe(document.documentElement,{childList:true,subtree:true});
 })();
 
+let _ownC={t:0,v:null};
+const ownS=()=>{const n=Date.now();if(!_ownC.v||n-_ownC.t>15000)_ownC={t:n,v:Object.assign({id:PFID},rkStats())};return _ownC.v};
+function navBadge(k){try{if(k!=='rank'||!PFID||PFID==='admin')return 0;const o=ownS(),p=ecoPend(o),L=(V.rk.ch&&V.rk.ch.list)||[];return (p.g?1:0)+p.m+L.filter(x=>x.to===PFID&&x.st==='pend'&&x.hq&&x.ts+CH_EXP>Date.now()).length}catch(e){return 0}}
+const SUBT={rev:[['rev','Revisões'],['errnotes','Caderno de erros']],errnotes:null,perf:[['perf','Desempenho'],['hist','Histórico']],hist:null};
+const SUBG={rev:'rev',errnotes:'rev',perf:'perf',hist:'perf'};
+function subTabs(v){const g=SUBG[v];if(!g)return '';return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 12px">${SUBT[g].map(([k,l])=>`<button type="button" class="chip ${v===k?'sel':''}" data-act="goto" data-v="${k}" data-p="{}" style="justify-content:center;padding:10px 6px">${l}</button>`).join('')}</div>`}
+ACT.menuav=()=>{V.rk.per='loja';V.rk.avc=false;V.stack=[];closeMenu();go('rank',{},false)};
+function navProfile(){try{if(!PFID||PFID==='admin')return '';const o=ownS(),e=ecoE(),lv=rkLv(rkXp(o,false)),av=e.eq&&e.eq.av||undefined;return `<button type="button" data-act="menuav" style="display:flex;align-items:center;gap:10px;width:100%;margin:2px 0 6px;padding:10px;border-radius:14px;border:1px solid var(--line);background:var(--surface2);color:inherit;text-align:left">${rkAv(pfName(),44,undefined,av)}<span style="min-width:0;flex:1"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pfName())}</b><span class="tiny muted">Nível ${lv} · ${ecoCoin(14)} ${ecoBal(o)}</span></span></button>`}catch(x){return ''}}
+function bnavRender(){let el=document.getElementById('bnav');if(!el){el=document.createElement('nav');el.id='bnav';el.setAttribute('aria-label','Atalhos');document.body.appendChild(el)}
+  const it=[['dash','Hoje','home'],['questions','Questões','check'],['rev','Revisar','cal'],['rank','Ranking','trophy']];
+  el.innerHTML=it.map(([k,l,i])=>{const on=V.view===k||(k==='rev'&&V.view==='errnotes')||(k==='dash'&&false),n=k==='dash'?alerts().filter(x=>x.lvl!=='info').length:navBadge(k);return `<button type="button" class="${on?'on':''}" data-act="goto" data-v="${k}" data-p="{}">${ico(i)}<span>${l}</span>${n?`<i class="bdg">${n}</i>`:''}</button>`}).join('')+`<button type="button" data-act="menu">${ico('menu')}<span>Mais</span></button>`}
 function renderNav(){
   const na=alerts().filter(x=>x.lvl!=='info').length;
-  $('#side').innerHTML=`<div class="logo">NEXUS<small>Segundo cérebro</small></div><button type="button" id="sidemin" class="ico" data-act="sidemin" title="Minimizar o menu" aria-label="Minimizar o menu">«</button>`+NAVG.map(([h,ks])=>{const it=ks.map(k=>NAV.find(x=>x[0]===k)).filter(Boolean);return it.length?`<div class="tiny muted" style="padding:12px 12px 4px;font-weight:800;letter-spacing:.08em;text-transform:uppercase">${h}</div>`+it.map(([k,l,i])=>`<button class="nv ${V.view===k||(k==='study'&&V.view==='method')||(k==='profile'&&PROF.includes(V.view))?'on':''}" data-act="goto" data-v="${k}" data-p="{}">${ico(i)}${l}${k==='dash'&&na?`<span class="badge">${na}</span>`:''}</button>`).join(''):''}).join('')+`<div style="height:1px;background:var(--line);margin:8px 12px"></div><button class="nv" data-act="sair"><span style="width:20px;text-align:center;flex:none">↩</span>Sair da conta</button><button class="nv" data-act="menusearch"><span style="width:20px;text-align:center;flex:none">🔎</span>Buscar em tudo</button>${TB.tabs.length<12?'<button class="nv" data-act="menutab"><span style="width:20px;text-align:center;flex:none">＋</span>Nova aba</button>':''}<button class="nv" data-act="menuwin"><span style="width:20px;text-align:center;flex:none">⧉</span>Nova janela</button><button class="nv" data-act="profsw"><span style="width:20px;text-align:center;flex:none">👤</span>${pfName()}</button>`;try{pillUpdate()}catch(e){}
+  $('#side').innerHTML=`<div class="logo">NEXUS<small>Segundo cérebro</small></div><button type="button" id="sidemin" class="ico" data-act="sidemin" title="Minimizar o menu" aria-label="Minimizar o menu">«</button>`+navProfile()+NAVG.map(([h,ks])=>{const it=ks.map(k=>NAV.find(x=>x[0]===k)).filter(Boolean);return it.length?`<div class="tiny muted" style="padding:12px 12px 4px;font-weight:800;letter-spacing:.08em;text-transform:uppercase">${h}</div>`+it.map(([k,l,i])=>{const nb=navBadge(k);return `<button class="nv ${V.view===k||(k==='study'&&V.view==='method')||(k==='profile'&&PROF.includes(V.view))||(k==='rev'&&V.view==='errnotes')||(k==='perf'&&V.view==='hist')?'on':''}" data-act="goto" data-v="${k}" data-p="{}">${ico(i)}${l}${k==='dash'&&na?`<span class="badge">${na}</span>`:''}${nb?`<span class="badge" style="background:var(--accent);color:var(--accent-fg)">${nb}</span>`:''}</button>`}).join(''):''}).join('')+`<div style="height:1px;background:var(--line);margin:8px 12px"></div><button class="nv" data-act="menusearch"><span style="width:20px;text-align:center;flex:none">🔎</span>Buscar em tudo</button>${TB.tabs.length<12?'<button class="nv" data-act="menutab"><span style="width:20px;text-align:center;flex:none">＋</span>Nova aba</button>':''}<button class="nv" data-act="menuwin"><span style="width:20px;text-align:center;flex:none">⧉</span>Nova janela</button><button class="nv" data-act="profsw"><span style="width:20px;text-align:center;flex:none">👤</span>${pfName()}</button>`;try{pillUpdate()}catch(e){}try{bnavRender()}catch(e){console.error(e)}
 }
 const VIEWS={};
 ACT.sair=async()=>{toast('Saindo…');try{await Promise.race([window.__sb.auth.signOut({scope:'local'}),new Promise(r=>setTimeout(r,2500))])}catch(e){}try{Object.keys(localStorage).filter(k=>/^sb-|supabase/i.test(k)).forEach(k=>localStorage.removeItem(k))}catch(e){}try{sessionStorage.clear()}catch(e){}try{history.replaceState(null,'',location.pathname)}catch(e){}location.reload()};
@@ -1143,7 +1170,7 @@ ACT.menusearch=()=>{closeMenu();ACT.search()};ACT.menutab=()=>{closeMenu();ACT.t
 function render(){
   setTimeout(()=>{const d=document.getElementById('sd');if(d&&!d.hidden&&!document.querySelector('.sdfab')){d.hidden=true;document.body.classList.remove('sd-open')}},0);
   renderNav();
-  const f=VIEWS[V.view]||VIEWS.dash;
+  let f=VIEWS[V.view]||VIEWS.dash;{const st=subTabs(V.view);if(st){const g=f;f=()=>st+g()}}
   const sc=window.scrollY,rk=V.view+'|'+((V.p&&(V.p.subject||V.p.id||V.p.c||V.p.sid))||''),same=V._rk===rk,hadA=!!(V.p&&(V.p.anchor||V.p.q));V._rk=rk;
   $('#main').innerHTML=f();
   try{hlApply()}catch(e){console.error(e)}try{nzApply()}catch(e){console.error(e)}
@@ -1263,7 +1290,9 @@ ACT.restoff=async()=>{const t=today(),c=cfg();if(!(c.rest||[]).includes(t))retur
 V.rk=V.rk||{per:'week',docs:[],t:0};
 function regQs(){const o=[];const add=(n,a,sj,tp,d)=>{n=Math.max(0,Math.round(+n||0));a=Math.min(n,Math.max(0,Math.round(+a||0)));for(let i=0;i<n;i++)o.push({id:'_rg',_reg:1,marked:'C',gab:i<a?'C':'E',subjectId:sj&&sj!=='geral'?sj:'',topicId:tp||'',date:d})};(S.sessions||[]).forEach(x=>{const d=x.date||x.id;(x.log||[]).forEach(l=>{if(l.qf===''||l.qf==null)return;add(l.qf,l.qa,l.sj,l.tp,d)});(x.xq||[]).forEach(e=>add(e.n,e.ok,e.sj,e.tp,d))});return o}
 function qAns(){return S.questions.filter(q=>q.marked&&q.marked!=='__nao').concat(regQs())}
-function rkStats(){
+let _rs={t:0,v:null};
+function rkStats(){const n=Date.now();if(_rs.v&&n-_rs.t<1500)return _rs.v;const v=rkStats0();_rs={t:n,v};return v}
+function rkStats0(){
   const t=today(),w0=addDays(t,-6),ans=qAns(),wk=ans.filter(q=>(q.date||'')>=w0);
   const mins=S.sessions.reduce((n,x)=>n+(x.minutes||0),0),wm=S.sessions.filter(x=>(x.date||'')>=w0).reduce((n,x)=>n+(x.minutes||0),0);
   const qa={};ans.forEach(q=>{if(q.date)qa[q.date]=(qa[q.date]||0)+1});const md={};S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date&&okDay(x.minutes,qa[x.date]||0,x.date))md[x.date]=1});const dm={},d70=addDays(t,-70);S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date&&x.date>=d70)dm[x.date]=Math.round(x.minutes)});
@@ -1588,7 +1617,7 @@ ACT.ecoclaim=b=>{const o=Object.assign({id:PFID},rkStats()),t=today(),k=b.datase
   ecoSave(e=>{let n=0;const gm=x=>{if(!e.cl['m:'+t+':'+x.id]&&x.ok){e.cl['m:'+t+':'+x.id]=x.c;n+=x.c}};
     if((k==='g'||k==='all')&&gf.ok&&!e.cl['g:'+t]){e.cl['g:'+t]=gf.amt;n+=gf.amt}
     if(k==='all')ms.forEach(gm);else if(k.startsWith('m:'))ms.filter(x=>x.id===k.slice(2)).forEach(gm);
-    if(n)setTimeout(()=>toast('+'+n+' moedas'),50)})};
+    }).then(()=>{setTimeout(ecoWatch,400);setTimeout(ecoWatch,2500)})};
 ACT.ecobuy=b=>{const [k,id]=b.dataset.k.split(':'),o=Object.assign({id:PFID},rkStats()),e=ecoE();let pr=0;
   if(k==='fr'){pr=ECO_FR[id][1];if(e.own['fr:'+id])return}else if(k==='ti'){pr=ECO_TI[id][1];if(e.own['ti:'+id])return}
   else if(k==='sh'){pr=ECO_SH;if(e.bm[today().slice(0,7)]){toast('Limite: 1 escudo por mês');return}if((e.inv.shield||0)>=1){toast('Você já tem um escudo guardado');return}}
@@ -1599,6 +1628,10 @@ ACT.ecoeq=b=>{const [k,id]=b.dataset.k.split(':');ecoSave(x=>{if(!x.own[k+':'+id
 ACT.ecoshield=b=>{const d=b.dataset.d,e=ecoE();if(!(e.inv.shield>0))return;const c=cfg();ecoSave(x=>{x.inv.shield=0;x.shu[d]=1},{shd:Array.from(new Set((c.shd||[]).concat(d))).sort(),fail:(c.fail||[]).filter(f=>f!==d)});toast('Escudo usado: o dia não conta como falha')};
 function ecoBanner(o){if(V.rk.per==='loja')return '';const p=ecoPend(o);if(!p.g&&!p.m)return '';
   return `<div class="rk-row" data-act="rkper" data-k="loja" style="display:block;cursor:pointer;padding:12px;margin:0 0 12px;border-color:var(--accent)"><div class="row" style="gap:8px">${rkI('gift','var(--accent)')}<b class="grow">${p.g?'Presente do dia liberado':'Missão cumprida'}${p.m&&p.g?' e '+p.m+(p.m===1?' missão':' missões'):''}</b><span class="rkch-c ok">Resgatar</span></div></div>`}
+let _eb=null;
+function ecoFly(n){const d=document.createElement('div');d.className='ecofly';d.innerHTML=ecoCoin(26)+'<b>+'+n+'</b>';document.body.appendChild(d);for(let i=0;i<Math.min(6,n+2);i++){const c=document.createElement('i');c.className='ecop';c.innerHTML=ecoCoin(16);c.style.setProperty('--dx',(Math.random()*160-80)+'px');c.style.setProperty('--dy',(-60-Math.random()*90)+'px');c.style.animationDelay=(i*60)+'ms';d.appendChild(c)}setTimeout(()=>d.remove(),1900)}
+function ecoWatch(){try{const me=PFID;if(!me||me==='admin'||!V.loaded.settings||!V.loaded.sessions||!V.loaded.questions||today()<ECO_START)return;const b=ecoBal(Object.assign({id:me},rkStats()));if(_eb!=null&&b>_eb&&!V.rk.play&&document.visibilityState==='visible')ecoFly(b-_eb);_eb=b;try{_ownC.t=0}catch(x){}}catch(x){console.error(x)}}
+setInterval(ecoWatch,6000);setTimeout(ecoWatch,5000);
 function ecoPoll(){try{const me=PFID;if(!me||me==='admin'||V.rk.play||V.rk.ecoSeen||!V.loaded.settings||!V.loaded.sessions||!V.loaded.questions)return;const sh=document.getElementById('sheet');if(sh&&!sh.hidden)return;
   const o=Object.assign({id:me},rkStats()),p=ecoPend(o);if(!p.g)return;V.rk.ecoSeen=1;
   sheet('Presente do dia',`<div style="text-align:center;padding:6px 0"><div style="margin:0 auto 10px;width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 18%,transparent)">${rkI('gift','var(--accent)')}</div><div style="font-size:17px;font-weight:800">Meta cumprida!</div><div class="muted" style="margin-top:6px;line-height:1.5">Seu presente de hoje vale <b>${p.g} moedas</b>.</div></div>`,async()=>{ACT.ecoclaim({dataset:{k:'g'}});return true},{save:'Resgatar',nofocus:true})}catch(e){console.error('ecoPoll',e)}}
@@ -1681,6 +1714,11 @@ setInterval(chPoll,5000);setTimeout(chPoll,2500);
 
 setTimeout(()=>{try{rkSync(true)}catch(e){}},12000);setInterval(()=>{try{if(document.visibilityState==='visible')rkSync()}catch(e){}},300000);
 
+function ecoDash(){try{if(!PFID||PFID==='admin'||today()<ECO_START)return '';const o=ownS(),e=ecoE(),t=today(),g=ecoGift(o),ms=ecoMis(o,t),bal=ecoBal(o);
+  const pend=(g.ok&&!g.got?1:0)+ms.filter(x=>x.ok&&!e.cl['m:'+t+':'+x.id]).length;
+  const line=(l,bar,r)=>`<div class="row" style="gap:8px;padding:8px 0;border-top:1px solid var(--line)"><div class="grow" style="min-width:0"><b style="font-size:13px">${l}</b>${bar?`<div class="rk-bar" style="height:4px;margin-top:5px"><i style="width:${bar}%"></i></div>`:''}</div>${r}</div>`;
+  const rows=line('Presente do dia',0,g.got?'<span class="rkch-c nd">Resgatado</span>':g.ok?`<button class="btn sm pri" data-act="ecoclaim" data-k="g">+${g.amt}</button>`:`<span class="tiny muted">${ecoCoin(13)} ${g.amt} · cumpra a meta</span>`)+ms.map(x=>{const cl=!!e.cl['m:'+t+':'+x.id];return line(x.t,x.pc,cl?'<span class="rkch-c nd">Resgatada</span>':x.ok?`<button class="btn sm pri" data-act="ecoclaim" data-k="m:${x.id}">+${x.c}</button>`:`<span class="tiny muted">${ecoCoin(13)} ${x.c}</span>`)}).join('');
+  return RK_CSS+`<div class="card" id="ecodash" style="margin:12px 0;padding:12px 14px"><div class="row" style="gap:8px;margin-bottom:4px"><div class="grow"><b>Missões e presente</b><div class="tiny muted">${pend?pend+(pend===1?' pronto para resgatar':' prontos para resgatar'):'Cumpra para ganhar moedas'}</div></div><button type="button" class="btn sm" data-act="menuav" style="display:inline-flex;align-items:center;gap:5px">${ecoCoin(16)} <b>${bal}</b></button></div>${rows}</div>`}catch(x){console.error(x);return ''}}
 VIEWS.dash=()=>{
   if(cfg().widgets&&!cfg().wqmat&&!V.wmig){V.wmig=1;const w=cfg().widgets.slice();if(!w.includes('qmat')){const i=w.indexOf('anki');w.splice(i>=0?i+1:w.length,0,'qmat')}put('settings','main',Object.assign({},strip(cfg()),{widgets:w,wqmat:1}))}
   if(cfg().widgets&&cfg().wflow&&!V.wmig3){V.wmig3=1;put('settings','main',Object.assign({},strip(cfg()),{widgets:cfg().widgets.filter(k=>k!=='hoje'&&k!=='resume'),wflow:0}))}
@@ -1693,7 +1731,7 @@ VIEWS.dash=()=>{
   const K=[['⏱️','Estudado hoje',hm(minutesOn(today())+runM)+(T.running?' ▸':''),'study'],['📝','Questões hoje',qh.length+(qh.length?' · '+Math.round(qhOk/qh.length*100)+'% ✓':''),'study'],['🃏','Cards a revisar',nd,'cards'],['🔥','Dias seguidos',(()=>{let n=0,k=today();const ok=d=>minutesOn(d)>0||(d===today()&&T.running);if(!ok(k))k=addDays(k,-1);while(ok(k)){n++;k=addDays(k,-1)}return n+(n===1?' dia':' dias')})(),'study']];
   return head('Hoje',`<button class="btn sm" data-act="report">Relatório</button><button class="btn sm" data-act="widgets">Personalizar</button>`)+
   `<div class="tiny muted" style="margin:-2px 0 12px">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</div>
-  ${restCard()}
+  ${restCard()}${ecoDash()}
   <div class="kpis dk" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">${K.map(([i,l,v,t])=>`<button class="kpi" data-act="goto" data-v="${t}" data-p="{}" style="cursor:pointer"><span class="muted" style="text-transform:none;letter-spacing:0;font-weight:600">${i} ${l}</span><b style="margin-top:6px">${v}</b></button>`).join('')}</div>
   ${homeCron()}
   <div class="grid w2 sec">${timerCard()}${WID.filter(w=>on.includes(w[0])).map(w=>W[w[0]]()).join('')}</div>
