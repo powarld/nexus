@@ -1057,7 +1057,7 @@ async function saImportSync(sb,uid,em){
 function saRoot(sb,uid){
   const parse=p=>{if(p.startsWith('pmdf_'))return{t:'tpl',c:p.slice(5)};if(p==='rank')return{t:'rank'};const m=p.match(/^data\/users\/[^/]+\/(.+)$/);return{t:'docs',c:m?m[1]:p}};
   const nowIso=()=>new Date().toISOString();
-  const listQ=k=>{let q=sb.from(k.t).select(k.t==='rank'?'id,data':'id,data,updated_at');if(k.t==='docs')q=q.eq('coll',k.c).eq('user_id',uid);else if(k.t==='tpl')q=q.eq('coll',k.c);return q};
+  const listQ=k=>{let q=sb.from(k.t).select(k.t==='rank'?'id,data':'id,data,updated_at');if(k.t==='rank')q=q.not('id','like','chq%');if(k.t==='docs')q=q.eq('coll',k.c).eq('user_id',uid);else if(k.t==='tpl')q=q.eq('coll',k.c);return q};
   const rowFor=(k,id,data)=>k.t==='docs'?{user_id:uid,coll:k.c,id,data,updated_at:nowIso()}:k.t==='tpl'?{coll:k.c,id,data,updated_at:nowIso()}:{id,user_id:uid,data,updated_at:nowIso()};
   const conflict=k=>k.t==='docs'?'user_id,coll,id':k.t==='tpl'?'coll,id':'id';
   const one=async(k,id)=>{let q=sb.from(k.t).select('data').eq('id',id);if(k.t==='docs')q=q.eq('coll',k.c).eq('user_id',uid);else if(k.t==='tpl')q=q.eq('coll',k.c);const r=await q.maybeSingle();if(r.error)throw r.error;return r.data?r.data.data:null};
@@ -1078,7 +1078,7 @@ function saRoot(sb,uid){
     }),
     onSnapshot(cb,err){let alive=true;const ck=uid+'|'+path;
       const out=c=>({docs:Object.keys(c.rows).map(id=>({id,data:(d=>()=>d)(c.rows[id])}))});
-      let busy=false,again=false,forceN=false;
+      let busy=false,again=false,forceN=false,rtm=0;
       const emit=async(force)=>{if(busy){again=true;if(force)forceN=true;return}busy=true;try{await emit0(force)}finally{busy=false;if(again){again=false;const f=forceN;forceN=false;emit(f)}}};
       const emit0=async(force)=>{if(!alive)return;try{
         if(k.t==='rank'){const r=await listQ(k);if(r.error)throw r.error;cb({docs:(r.data||[]).map(x=>({id:x.id,data:()=>x.data}))});return}
@@ -1087,7 +1087,7 @@ function saRoot(sb,uid){
         const ch=await nxSync(listQ,k,c);if(!alive)return;if(ch)nxIdbSet(ck,{rows:c.rows,since:c.since,full:c.full});cb(out(c))}catch(e){if(err)err(e)}};
       emit();lis.push(emit);
       try{const chn=sb.channel('c_'+path+'_'+Math.random().toString(36).slice(2,7)).on('postgres_changes',{event:'*',schema:'public',table:k.t,...(k.t==='docs'?{filter:'user_id=eq.'+uid}:{})},p=>{const row=p.new&&p.new.id?p.new:p.old;if(!row)return;if(k.t!=='rank'&&row.coll&&row.coll!==k.c)return;
-        if(k.t==='rank'){emit();return}
+        if(k.t==='rank'){clearTimeout(rtm);rtm=setTimeout(()=>emit(),4000);return}
         const c=NXC[ck];if(!c){emit();return}
         if(p.eventType==='DELETE'){if(!row.coll){emit(true);return}delete c.rows[row.id]}
         else if(p.new&&p.new.data){c.rows[p.new.id]=p.new.data;if(p.new.updated_at&&(!c.since||p.new.updated_at>c.since))c.since=p.new.updated_at}
@@ -1271,11 +1271,11 @@ function rkStats(){
   let skb=0,run=0,prev='';const brid=(a,b)=>{let x=addDays(a,1);while(x<b){if(!rs.has(x))return false;x=addDays(x,1)}return true};Object.keys(md).sort().forEach(d=>{run=prev&&brid(prev,d)?run+1:1;prev=d;if(run>skb)skb=run});
   return {sk,skb:Math.max(skb,sk),name:pfName(),q:ans.length,qok:ans.filter(isOk).length,min:Math.round(mins),wq:wk.length,wqok:wk.filter(isOk).length,wmin:Math.round(wm),dm,dq,rest:(cfg().rest||[]).filter(x=>x>=d70),atest:(cfg().atest||[]).filter(x=>x>=d70),dbet:(cfg().duel||{}).bet||'',dtn:(cfg().duel||{}).tn||null,dch:(cfg().dch||null),fail:(cfg().fail||[]).filter(x=>x>=d70),upd:Date.now(),wk:t}}
 async function rkSync(force){
-  try{if(!RDB||!PFID)return;const now=Date.now();if(!force&&V.rk.t&&now-V.rk.t<60000)return;if(!V.loaded.sessions||!V.loaded.questions)return;V.rk.t=now;
-    await RDB.collection('rank').doc(PFID).set(rkStats())}catch(e){console.error('rank',e)}}
+  try{if(!RDB||!PFID)return;const now=Date.now();if(!force&&V.rk.t&&now-V.rk.t<60000)return;if(!V.loaded.sessions||!V.loaded.questions)return;V.rk.t=now;const st=rkStats(),key=JSON.stringify(Object.assign({},st,{upd:0}));if(key===V.rk.lk&&now-(V.rk.lw||0)<9e5)return;
+    await RDB.collection('rank').doc(PFID).set(st);V.rk.lk=key;V.rk.lw=now}catch(e){console.error('rank',e)}}
 function rkSoon(){try{if(!RDB||!PFID||V.rkTm)return;const w=Math.max(1500,30000-(Date.now()-(V.rkLast||0)));V.rkTm=setTimeout(()=>{V.rkTm=0;try{const st=rkStats(),k=JSON.stringify([st.q,st.qok,st.wq,st.wqok,st.min,st.wmin,st.sk]);if(k===V.rkKey)return;V.rkKey=k;V.rkLast=Date.now();rkSync(true)}catch(e){}},w)}catch(e){}}
-function rkListen(){try{if(!RDB)return;duelListen();RDB.collection('rank').onSnapshot(sn=>{V.rk.docs=sn.docs.map(d=>Object.assign({id:d.id},d.data()));if(ADMIN){const X=['maria cristina','usuário de teste','usuario de teste'];V.rk.docs.filter(d=>d.id!==PFID&&X.includes(String(d.name||'').trim().toLowerCase())&&!(V.rkDel||(V.rkDel={}))[d.id]).forEach(d=>{V.rkDel[d.id]=1;RDB.collection('rank').doc(d.id).delete().then(()=>{V.rk.docs=V.rk.docs.filter(x=>x.id!==d.id);scheduleRender()}).catch(e=>{console.error(e)})})}if(V.view==='rank')scheduleRender()},e=>console.error('rank',e))}catch(e){console.error(e)}}
-IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.flame='<path d="M12 3c1 4 5 6 5 11a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/>';IC.bolt='<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>';IC.clock='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';IC.crown='<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>';
+function rkListen(){try{if(!RDB)return;duelListen();RDB.collection('rank').onSnapshot(sn=>{V.rk.docs=sn.docs.filter(d=>!/^chq_/.test(d.id)).map(d=>Object.assign({id:d.id},d.data()));if(ADMIN){const X=['maria cristina','usuário de teste','usuario de teste'];V.rk.docs.filter(d=>d.id!==PFID&&X.includes(String(d.name||'').trim().toLowerCase())&&!(V.rkDel||(V.rkDel={}))[d.id]).forEach(d=>{V.rkDel[d.id]=1;RDB.collection('rank').doc(d.id).delete().then(()=>{V.rk.docs=V.rk.docs.filter(x=>x.id!==d.id);scheduleRender()}).catch(e=>{console.error(e)})})}if(V.view==='rank')scheduleRender()},e=>console.error('rank',e))}catch(e){console.error(e)}}
+IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.swords='<path d="M14 5l5-2 2 2-2 5-8 8-3-3z"/><path d="M3 21l4-4M5 15l4 4"/><path d="M10 5L5 3 3 5l2 5 3 3"/>';IC.flame='<path d="M12 3c1 4 5 6 5 11a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/>';IC.bolt='<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>';IC.clock='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';IC.crown='<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>';
 const rkI=(n,c)=>`<svg class="i rk-i" viewBox="0 0 24 24"${c?` style="color:${c}"`:''}>${IC[n]||''}</svg>`;
 const RK_T=['Novato','Aprendiz','Estudante','Focado','Dedicado','Veterano','Mestre','Elite','Lenda'];
 const rkNeed=l=>100*(l-1)*(l-1),rkLv=xp=>{let l=1;while(xp>=rkNeed(l+1))l++;return l},rkTitle=l=>RK_T[Math.min(l-1,RK_T.length-1)];
@@ -1486,11 +1486,11 @@ function chCalc(docs){const now=Date.now(),A={},L=[],dl={},rec={},me=PFID,pl=V.r
       if(st!=='play'){st='done';w=c.n>an?c.from||d.id:c.n<an?c.to:c.t<at?d.id:c.t>at?c.to:'tie';const f=d.id;
         if(w==='tie'){Rc(f).t++;Rc(c.to).t++}else{const lo=w===f?c.to:f;add(w,CH_STAKE);add(lo,-CH_STAKE);Rc(w).w++;Rc(lo).l++}}}
     else if(now>=c.ts+CH_EXP){st='exp';add(d.id,CH_PART)}
-    L.push({id:c.id,from:d.id,fromN:c.fn||d.name,to:c.to,toN:c.toN,sj:c.sj,ts:c.ts,n:c.n,t:c.t,st,w,an,at,qs:c.qs})})});
+    L.push({id:c.id,from:d.id,fromN:c.fn||d.name,to:c.to,toN:c.toN,sj:c.sj,ts:c.ts,n:c.n,t:c.t,st,w,an,at,qs:c.qs,hq:!!(c.hq||c.qs)})})});
   V.rk.ch={list:L,rec};V.rk.cdl=dl;
-  const mine=(cfg().dch||{}).c||{},old=L.filter(x=>x.from===me&&(x.st==='done'||x.st==='exp')&&mine[x.id]&&mine[x.id].qs);V.rk.sw=V.rk.sw||{};
-  if(old.length&&!old.every(x=>V.rk.sw[x.id])){old.forEach(x=>{V.rk.sw[x.id]=1});chSave(d=>{old.forEach(x=>{if(d.c[x.id]){const e=Object.assign({},d.c[x.id]);delete e.qs;d.c[x.id]=e}})})}}
-function chBanner(me){const L=(V.rk.ch&&V.rk.ch.list)||[],n=L.filter(x=>x.to===me&&x.st==='pend'&&x.qs&&x.ts+CH_EXP>Date.now()).length;if(!n||V.rk.per==='chal')return '';
+  const mine=(cfg().dch||{}).c||{},old=L.filter(x=>x.from===me&&(x.st==='done'||x.st==='exp')&&mine[x.id]&&(mine[x.id].qs||mine[x.id].hq));V.rk.sw=V.rk.sw||{};
+  if(old.length&&!old.every(x=>V.rk.sw[x.id])){old.forEach(x=>{V.rk.sw[x.id]=1;if(mine[x.id].hq)try{Promise.resolve(RDB.collection('rank').doc('chq_'+x.id).delete()).catch(()=>{})}catch(e){}});chSave(d=>{old.forEach(x=>{if(d.c[x.id]){const e=Object.assign({},d.c[x.id]);delete e.qs;delete e.hq;d.c[x.id]=e}})})}}
+function chBanner(me){const L=(V.rk.ch&&V.rk.ch.list)||[],n=L.filter(x=>x.to===me&&x.st==='pend'&&x.hq&&x.ts+CH_EXP>Date.now()).length;if(!n||V.rk.per==='chal')return '';
   return `<div class="rk-row" data-act="rkper" data-k="chal" style="display:block;cursor:pointer;padding:12px;margin:0 0 12px;border-color:var(--accent)"><div class="row" style="gap:8px">${rkI('bolt','var(--accent)')}<b class="grow">Você tem ${n} ${n===1?'desafio esperando':'desafios esperando'}</b><span class="rkch-c ok">Ver</span></div></div>`}
 function chOppo(all,me){return all.filter(d=>d.id!==me&&d.id!=='admin'&&d.name&&!/teste|test|maria cristina/i.test(d.name)&&(d.upd||0)>Date.now()-14*864e5).sort((a,b)=>String(a.name).localeCompare(String(b.name)))}
 ACT.chnew=()=>{const me=PFID,all=V.rk.docs.filter(d=>d.id!==me),L=(V.rk.ch&&V.rk.ch.list)||[],td=today(),
@@ -1502,10 +1502,11 @@ ACT.chnew=()=>{const me=PFID,all=V.rk.docs.filter(d=>d.id!==me),L=(V.rk.ch&&V.rk
   sheet('Desafiar',`<div class="tiny muted" style="margin-bottom:8px">Você responde ${CH_N} questões agora. O rival tem 48h para responder as mesmas. Quem acertar mais ganha ${CH_STAKE} XP; o outro perde ${CH_STAKE}. Empate: desempata o menor tempo.</div><label class="tiny muted">Quem desafiar</label><select name="u" style="width:100%;margin-bottom:10px">${op.map(d=>`<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}</select><label class="tiny muted">Matéria</label><select name="s" style="width:100%">${sj.map(([s,n])=>`<option value="${esc(s.id)}">${esc(s.name)} (${n} questões)</option>`).join('')}</select>`,async o=>{
     const qs=chPick(o.s),u=op.find(d=>d.id===o.u),s=S.subjects.find(x=>x.id===o.s);if(!qs||!u||!s){toast('Não foi possível montar o desafio');return false}
     V.rk.play={m:'make',id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),to:u.id,toN:u.name,sjN:s.name,qs,i:0,ok:0,ms:0,q0:Date.now(),rev:null,done:0};V.rk.per='chal'},{save:'Começar'})};
-ACT.chacc=b=>{const me=PFID,x=((V.rk.ch&&V.rk.ch.list)||[]).find(y=>y.id===b.dataset.id&&y.to===me&&y.st==='pend'&&y.qs);if(!x||x.ts+CH_EXP<Date.now()){toast('Desafio indisponível');return}
-  V.rk.play={m:'acc',id:x.id,from:x.from,fromN:x.fromN,sjN:x.sj,qs:x.qs,cn:x.n,ct:x.t,i:0,ok:0,ms:0,q0:Date.now(),rev:null,done:0};chSave(d=>{d.a[x.id]={id:x.id,from:x.from,st:Date.now(),n:null}});render()};
+ACT.chacc=async b=>{const me=PFID,x=((V.rk.ch&&V.rk.ch.list)||[]).find(y=>y.id===b.dataset.id&&y.to===me&&y.st==='pend'&&y.hq);if(!x||x.ts+CH_EXP<Date.now()){toast('Desafio indisponível');return}
+  let qs=x.qs;if(!qs){toast('Carregando desafio…');try{const r=await RDB.collection('rank').doc('chq_'+x.id).get(),dd=r&&r.exists?r.data():null;if(!dd||!dd.qs)throw 0;qs=dd.qs}catch(e){toast('Não foi possível carregar o desafio. Tente de novo.');return}}
+  V.rk.play={m:'acc',id:x.id,from:x.from,fromN:x.fromN,sjN:x.sj,qs,cn:x.n,ct:x.t,i:0,ok:0,ms:0,q0:Date.now(),rev:null,done:0};chSave(d=>{d.a[x.id]={id:x.id,from:x.from,st:Date.now(),n:null}});render()};
 function chFinish(p){p.done=1;const me=PFID;
-  if(p.m==='make')chSave(d=>{d.c[p.id]={id:p.id,from:me,to:p.to,toN:p.toN,fn:pfName(),sj:p.sjN,ts:Date.now(),n:p.ok,t:p.ms,qs:p.qs}});
+  if(p.m==='make')Promise.resolve(RDB.collection('rank').doc('chq_'+p.id).set({qs:p.qs,from:me,at:Date.now()})).then(()=>chSave(d=>{d.c[p.id]={id:p.id,from:me,to:p.to,toN:p.toN,fn:pfName(),sj:p.sjN,ts:Date.now(),n:p.ok,t:p.ms,hq:1}})).catch(e=>{console.error(e);toast('Não foi possível enviar o desafio. Tente de novo.')});
   else{p.w=p.ok>p.cn?me:p.ok<p.cn?p.from:p.ms<p.ct?me:p.ms>p.ct?p.from:'tie';chSave(d=>{d.a[p.id]={id:p.id,from:p.from,st:(d.a[p.id]||{}).st||Date.now(),n:p.ok,t:p.ms,ts:Date.now()}})}}
 ACT.chans=b=>{const p=V.rk.play;if(!p||p.rev||p.done)return;const q=p.qs[p.i],v=b.dataset.v,ok=v===q.g;p.ok+=ok?1:0;p.ms+=Date.now()-p.q0;p.rev={v,ok};render()};
 ACT.chnext=()=>{const p=V.rk.play;if(!p||!p.rev)return;p.i++;if(p.i>=p.qs.length)chFinish(p);else{p.rev=null;p.q0=Date.now()}render()};
@@ -1524,7 +1525,7 @@ function chPlay(){const p=V.rk.play,me=PFID,H=head('Desafio','')+RK_CSS,sec=ms=>
   <div class="card" style="padding:12px"><div class="tiny muted">Questão ${p.i+1} de ${p.qs.length}</div><div style="margin:6px 0 8px;line-height:1.5;white-space:pre-wrap">${esc(q.s)}</div>${o.map(btn).join('')}
   ${rev?`<div style="margin-top:10px;padding:10px;border-radius:10px;background:${rev.ok?'rgba(52,199,89,.12)':'rgba(255,69,58,.12)'}"><b>${rev.ok?'Acertou':'Errou'}</b> · Gabarito: <b>${esc(al?g+') '+(gt?gt[1]:''):gt?gt[1]:g)}</b></div><div style="margin-top:8px;line-height:1.5">${cm}</div><div class="row" style="margin-top:12px"><button class="btn pri" data-act="chnext" style="width:100%">${p.i+1>=p.qs.length?'Ver resultado':'Próxima'}</button></div>`:''}</div>`}
 function chView(all,me){const L=(V.rk.ch&&V.rk.ch.list)||[],now=Date.now(),R=(V.rk.ch&&V.rk.ch.rec||{})[me]||{w:0,l:0,t:0},nm=id=>{const x=all.find(d=>d.id===id);return(x&&x.name)||'Usuário'},hl=x=>Math.max(1,Math.ceil((x.ts+CH_EXP-now)/36e5))+'h',sec=ms=>Math.round(ms/1000)+'s';
-  const inc=L.filter(x=>x.to===me&&x.st==='pend'&&x.qs&&x.ts+CH_EXP>now),out=L.filter(x=>x.from===me&&(x.st==='pend'||x.st==='play')),fin=L.filter(x=>(x.from===me||x.to===me)&&(x.st==='done'||x.st==='exp')).sort((a,b)=>b.ts-a.ts).slice(0,10);
+  const inc=L.filter(x=>x.to===me&&x.st==='pend'&&x.hq&&x.ts+CH_EXP>now),out=L.filter(x=>x.from===me&&(x.st==='pend'||x.st==='play')),fin=L.filter(x=>(x.from===me||x.to===me)&&(x.st==='done'||x.st==='exp')).sort((a,b)=>b.ts-a.ts).slice(0,10);
   const row=(l,r,c)=>`<div class="rk-row" style="display:block;padding:10px 12px"><div class="row" style="gap:8px"><div class="grow" style="min-width:0">${l}</div>${r}</div>${c||''}</div>`;
   const hero=`<div class="rk-hero"><div class="row"><div class="grow"><b style="font-size:17px">Desafio 1×1</b><div class="tiny muted" style="margin-top:4px;line-height:1.45">Escolha um rival e uma matéria. Vocês respondem as mesmas ${CH_N} questões. Quem acertar mais ganha ${CH_STAKE} XP e o outro perde ${CH_STAKE}.</div></div></div><div class="row" style="margin-top:12px"><button class="btn pri" data-act="chnew" style="width:100%">Desafiar alguém</button></div></div>`;
   const tiles=`<div class="rk-tiles" style="margin:0 0 12px"><div class="rk-tile"><span class="tiny muted">Vitórias</span><b>${R.w}</b></div><div class="rk-tile"><span class="tiny muted">Derrotas</span><b>${R.l}</b></div><div class="rk-tile"><span class="tiny muted">Empates</span><b>${R.t}</b></div></div>`;
@@ -1539,7 +1540,7 @@ function chView(all,me){const L=(V.rk.ch&&V.rk.ch.list)||[],now=Date.now(),R=(V.
 
 V.rk.chSeen=V.rk.chSeen||{};
 function chPoll(){try{const me=PFID;if(!me||me==='admin'||!V.rk||!V.rk.docs||!V.rk.docs.length||V.rk.play)return;const sh=document.getElementById('sheet');if(sh&&!sh.hidden)return;
-  chCalc(V.rk.docs);const x=((V.rk.ch&&V.rk.ch.list)||[]).find(y=>y.to===me&&y.st==='pend'&&y.qs&&y.ts+CH_EXP>Date.now()&&!V.rk.chSeen[y.id]);if(!x)return;V.rk.chSeen[x.id]=1;
+  chCalc(V.rk.docs);const x=((V.rk.ch&&V.rk.ch.list)||[]).find(y=>y.to===me&&y.st==='pend'&&y.hq&&y.ts+CH_EXP>Date.now()&&!V.rk.chSeen[y.id]);if(!x)return;V.rk.chSeen[x.id]=1;
   sheet('Você foi desafiado',`<div style="text-align:center;padding:6px 0"><div style="margin:0 auto 10px;width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)">${rkI('bolt','var(--accent)')}</div><div style="font-size:17px;font-weight:800">${esc(x.fromN||'Alguém')} te desafiou</div><div class="muted" style="margin-top:6px;line-height:1.5">Matéria: <b>${esc(x.sj)}</b><br>${CH_N} questões iguais para os dois. Quem acertar mais ganha ${CH_STAKE} XP e o outro perde ${CH_STAKE}.<br>Você tem até ${new Date(x.ts+CH_EXP).toLocaleString('pt-BR',{weekday:'short',hour:'2-digit',minute:'2-digit'})} para aceitar.</div></div>`,async()=>{go('rank',{},false);ACT.chacc({dataset:{id:x.id}});return true},{save:'Aceitar agora',nofocus:true})}catch(e){console.error('chPoll',e)}}
 setInterval(chPoll,5000);setTimeout(chPoll,2500);
 
