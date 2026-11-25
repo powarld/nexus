@@ -1240,8 +1240,8 @@ function restAuto(){const k=hrMinDate();if(V.autoK===k||!V.loaded.settings||!V.l
   const c=cfg();if(!c.restauto){put('settings','main',Object.assign({},strip(c),{restauto:today()}));return}
   let d=c.restauto,rest=(c.rest||[]).slice(),fail=(c.fail||[]).slice(),sh=Object.assign({},c.restsh||{}),ch=0,g=0;
   const wr=x=>rest.find(r=>weekStart(r)===weekStart(x));
-  while(d<k&&g++<120){const st=S.sessions.some(x=>x.date===d&&(x.minutes||0)>0);
-    if(!st&&!rest.includes(d)&&!fail.includes(d)){if(wr(d)){fail.push(d);schedShift(1)}else{rest.push(d);sh[d]=schedShift(1)}ch=1}
+  const at=c.atest||[];while(d<k&&g++<120){const st=S.sessions.some(x=>x.date===d&&(x.minutes||0)>0);
+    if(!st&&!rest.includes(d)&&!fail.includes(d)&&!at.includes(d)){if(wr(d)){fail.push(d);schedShift(1)}else{rest.push(d);sh[d]=schedShift(1)}ch=1}
     d=addDays(d,1)}
   if(ch||d!==c.restauto)put('settings','main',Object.assign({},strip(c),{rest,fail,restsh:sh,restauto:d}))}
 setTimeout(()=>{try{schedRoll();restAuto()}catch(e){}},4000);setInterval(()=>{try{schedRoll();restAuto()}catch(e){}},30000);
@@ -1267,47 +1267,116 @@ function rkStats(){
   const t=today(),w0=addDays(t,-6),ans=qAns(),wk=ans.filter(q=>(q.date||'')>=w0);
   const mins=S.sessions.reduce((n,x)=>n+(x.minutes||0),0),wm=S.sessions.filter(x=>(x.date||'')>=w0).reduce((n,x)=>n+(x.minutes||0),0);
   const md={};S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date)md[x.date]=1});const dm={},d70=addDays(t,-70);S.sessions.forEach(x=>{if((x.minutes||0)>0&&x.date&&x.date>=d70)dm[x.date]=Math.round(x.minutes)});
-  const dq={};ans.forEach(q=>{if(q.date&&q.date>=d70)dq[q.date]=(dq[q.date]||0)+1});const rs=new Set(cfg().rest||[]);let k=t;if(!md[k])k=addDays(k,-1);let sk=0;while(md[k]||rs.has(k)){if(md[k])sk++;k=addDays(k,-1)}
+  const dq={};ans.forEach(q=>{if(q.date&&q.date>=d70)dq[q.date]=(dq[q.date]||0)+1});const rs=new Set((cfg().rest||[]).concat(cfg().atest||[]));let k=t;if(!md[k])k=addDays(k,-1);let sk=0;while(md[k]||rs.has(k)){if(md[k])sk++;k=addDays(k,-1)}
   let skb=0,run=0,prev='';const brid=(a,b)=>{let x=addDays(a,1);while(x<b){if(!rs.has(x))return false;x=addDays(x,1)}return true};Object.keys(md).sort().forEach(d=>{run=prev&&brid(prev,d)?run+1:1;prev=d;if(run>skb)skb=run});
-  return {sk,skb:Math.max(skb,sk),name:pfName(),q:ans.length,qok:ans.filter(isOk).length,min:Math.round(mins),wq:wk.length,wqok:wk.filter(isOk).length,wmin:Math.round(wm),dm,dq,rest:(cfg().rest||[]).filter(x=>x>=d70),fail:(cfg().fail||[]).filter(x=>x>=d70),upd:Date.now(),wk:t}}
+  return {sk,skb:Math.max(skb,sk),name:pfName(),q:ans.length,qok:ans.filter(isOk).length,min:Math.round(mins),wq:wk.length,wqok:wk.filter(isOk).length,wmin:Math.round(wm),dm,dq,rest:(cfg().rest||[]).filter(x=>x>=d70),atest:(cfg().atest||[]).filter(x=>x>=d70),fail:(cfg().fail||[]).filter(x=>x>=d70),upd:Date.now(),wk:t}}
 async function rkSync(force){
   try{if(!RDB||!PFID)return;const now=Date.now();if(!force&&V.rk.t&&now-V.rk.t<60000)return;if(!V.loaded.sessions||!V.loaded.questions)return;V.rk.t=now;
     await RDB.collection('rank').doc(PFID).set(rkStats())}catch(e){console.error('rank',e)}}
 function rkSoon(){try{if(!RDB||!PFID||V.rkTm)return;const w=Math.max(1500,30000-(Date.now()-(V.rkLast||0)));V.rkTm=setTimeout(()=>{V.rkTm=0;try{const st=rkStats(),k=JSON.stringify([st.q,st.qok,st.wq,st.wqok,st.min,st.wmin,st.sk]);if(k===V.rkKey)return;V.rkKey=k;V.rkLast=Date.now();rkSync(true)}catch(e){}},w)}catch(e){}}
 function rkListen(){try{if(!RDB)return;RDB.collection('rank').onSnapshot(sn=>{V.rk.docs=sn.docs.map(d=>Object.assign({id:d.id},d.data()));if(ADMIN){const X=['maria cristina','usuário de teste','usuario de teste'];V.rk.docs.filter(d=>d.id!==PFID&&X.includes(String(d.name||'').trim().toLowerCase())&&!(V.rkDel||(V.rkDel={}))[d.id]).forEach(d=>{V.rkDel[d.id]=1;RDB.collection('rank').doc(d.id).delete().then(()=>{V.rk.docs=V.rk.docs.filter(x=>x.id!==d.id);scheduleRender()}).catch(e=>{console.error(e)})})}if(V.view==='rank')scheduleRender()},e=>console.error('rank',e))}catch(e){console.error(e)}}
+IC.flame='<path d="M12 3c1 4 5 6 5 11a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/>';IC.bolt='<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>';IC.clock='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';IC.crown='<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>';
+const rkI=(n,c)=>`<svg class="i rk-i" viewBox="0 0 24 24"${c?` style="color:${c}"`:''}>${IC[n]||''}</svg>`;
+const RK_T=['Novato','Aprendiz','Estudante','Focado','Dedicado','Veterano','Mestre','Elite','Lenda'];
+const rkNeed=l=>100*(l-1)*(l-1),rkLv=xp=>{let l=1;while(xp>=rkNeed(l+1))l++;return l},rkTitle=l=>RK_T[Math.min(l-1,RK_T.length-1)];
+const RK_A=[
+['sk7','flame','Sequência de 7 dias',d=>d.skb||d.sk||0,7,'dias',100,'Constante'],
+['sk14','flame','14 dias seguidos',d=>d.skb||d.sk||0,14,'dias',250,'Imparável'],
+['sk30','flame','30 dias seguidos',d=>d.skb||d.sk||0,30,'dias',600,'Inabalável'],
+['h10','clock','10h de estudo',d=>Math.round((d.min||0)/60),10,'h',100,''],
+['h50','clock','50h de estudo',d=>Math.round((d.min||0)/60),50,'h',300,'Maratonista'],
+['h100','clock','100h de estudo',d=>Math.round((d.min||0)/60),100,'h',600,'Mestre do tempo'],
+['q100','pen','100 questões',d=>d.q||0,100,'q',100,''],
+['q500','pen','500 questões',d=>d.q||0,500,'q',300,'Questionador'],
+['q1000','pen','1000 questões',d=>d.q||0,1000,'q',600,'Máquina de questões'],
+['ac80','target','80% de acerto (mín. 100 questões)',d=>(d.q||0)>=100?Math.round((d.qok||0)/d.q*100):0,80,'%',200,'Sniper'],
+['ch','trophy','Desafio: 30 dias sem falhar',d=>{const c=rkCh(d);return c.nd||c.fl?0:c.ok},30,'dias',1000,'Campeão do desafio']];
+const rkEarned=d=>RK_A.filter(a=>a[3](d)>=a[4]),rkBonus=d=>rkEarned(d).reduce((n,a)=>n+a[6],0),rkTitleOf=d=>{const e=rkEarned(d).filter(a=>a[7]);return e.length?e[e.length-1][7]:''};
+const rkBd=(d,n)=>{const e=rkEarned(d);if(!e.length)return '';return e.slice(-n).map(a=>rkI(a[1])).join('')+(e.length>n?`<span class="tiny muted">+${e.length-n}</span>`:'')};
+const rkXp=(d,wk)=>Math.round((wk?d.wmin:d.min||0)||0)+3*((wk?d.wq:d.q)||0)+2*((wk?d.wqok:d.qok)||0)+(wk?0:rkBonus(d));
+const rkAv=(n,sz)=>{n=String(n||'?');let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%360;return `<span class="rk-av" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.42)}px;background:linear-gradient(135deg,hsl(${h} 65% 48%),hsl(${(h+40)%360} 70% 38%))">${esc(n.trim().charAt(0).toUpperCase())}</span>`};
+const RK_CSS=`<style>
+.rk-av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:800;flex:none}
+.rk-hero{position:relative;overflow:hidden;border-radius:20px;padding:18px;margin:0 0 14px;background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 60%),var(--surface);border:1px solid var(--line)}
+.rk-bar{height:10px;border-radius:6px;background:#8883;overflow:hidden}.rk-bar>i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),#7dd3fc);animation:rkg .9s ease-out}
+@keyframes rkg{from{width:0}}@keyframes rkup{from{transform:scaleY(0)}}@keyframes rkpop{0%{transform:scale(.6);opacity:0}100%{transform:none;opacity:1}}
+.rk-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.rk-tile{border-radius:14px;padding:10px 6px;text-align:center;background:#8881;border:1px solid var(--line)}.rk-tile b{display:block;font-size:17px;font-weight:800;white-space:nowrap}.rk-tile span{font-size:11px;opacity:.65}
+.rk-chase{margin-top:12px;font-size:13px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.rk-ach{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:0 0 14px}.rk-a{border-radius:14px;padding:10px;border:1px solid var(--line);background:var(--surface)}.rk-a.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}.rk-a.off .e{filter:grayscale(1);opacity:.5}.rk-a b{font-size:13px}.rk-a .rk-bar{height:6px;margin-top:6px}
+.rk-pod{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:8px;align-items:end;margin:6px 0 14px}.rk-pc{text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;animation:rkpop .6s ease-out both}.rk-pc>div>.rk-i{width:30px;height:30px}.rk-pc .nm{font-weight:700;font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk-pc .vl{font-size:12px;opacity:.75}
+.rk-st{width:100%;border-radius:14px 14px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:8px;font-size:22px;font-weight:900;transform-origin:bottom;animation:rkup .7s ease-out both;background:#8882}.rk-p1 .rk-st{height:96px;background:linear-gradient(180deg,#facc15aa,#facc1522)}.rk-p2 .rk-st{height:72px;background:linear-gradient(180deg,#cbd5e1aa,#cbd5e122)}.rk-p3 .rk-st{height:54px;background:linear-gradient(180deg,#fb923caa,#fb923c22)}.rk-pc.me .rk-av{box-shadow:0 0 0 3px var(--accent)}
+.rk-row{display:grid;grid-template-columns:28px auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;margin:0 0 8px;background:var(--surface);border:1px solid var(--line)}.rk-row.me{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--surface))}.rk-row .pos{font-weight:800;opacity:.6;text-align:center}.rk-lv{font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;background:#8882;margin-left:6px;vertical-align:middle}
+.rk-dots{display:flex;gap:4px;margin-top:6px}.rkd{width:14px;height:14px;border-radius:5px;background:#8883}.rkd.ok{background:var(--ok)}.rkd.rs{background:#3b82f6}.rkd.fl{background:var(--bad)}
+.rk-i{width:17px;height:17px;vertical-align:-3px}.rk-seg .chip{display:inline-flex;align-items:center;gap:6px}.rk-tile b .rk-i{width:18px;height:18px;color:#fb923c}.rk-a .e .rk-i{width:24px;height:24px}.rk-a.on .e .rk-i{color:var(--accent)}.rk-bds{display:inline-flex;gap:3px;align-items:center;vertical-align:-3px}.rk-bds .rk-i{width:14px;height:14px;color:#facc15}.rk-seg{display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;padding-bottom:2px}
+.rkc-g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}.rkc-h{text-align:center;font-size:10px;opacity:.5;font-weight:700}.rkc{height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#8881;color:#8a8a90;cursor:pointer}.rkc.l1{background:color-mix(in srgb,var(--ok) 30%,transparent);color:#d1fae5}.rkc.l2{background:color-mix(in srgb,var(--ok) 52%,transparent);color:#fff}.rkc.l3{background:color-mix(in srgb,var(--ok) 76%,transparent);color:#fff}.rkc.l4{background:var(--ok);color:#fff}.rkc.rs{background:#3b82f6;color:#fff}.rkc.at{background:#f59e0b;color:#fff}.rkd.at{background:#f59e0b}.rkc.fl{background:var(--bad);color:#fff;font-size:15px}.rkc.fut{opacity:.3}.rkc.now{outline:2px solid var(--accent);outline-offset:1px}.rkc-lg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;opacity:.8;margin:0 0 12px;align-items:center}.rkc-lg span{display:inline-flex;align-items:center;gap:4px}.rkc-lg .rkc{width:14px;height:14px;font-size:10px;border-radius:4px;cursor:default}
+.rkch-g{display:grid;grid-template-columns:repeat(15,1fr);gap:3px;margin-top:10px}.rkch-g .rkc{height:22px;font-size:9px;border-radius:6px}.rkc.nd{opacity:.3}.rkch-c{font-size:11px;font-weight:800;padding:3px 10px;border-radius:99px;flex:none}.rkch-c.ok{background:color-mix(in srgb,var(--ok) 22%,transparent);color:var(--ok)}.rkch-c.fl{background:color-mix(in srgb,var(--bad) 22%,transparent);color:var(--bad)}.rkch-c.nd{background:#8882;opacity:.7}
+</style>`;
 VIEWS.rank=()=>{
   rkSync();
-  const P=V.rk.per,wk=P==='week',me=PFID,docs=V.rk.docs.slice();
-  const mine=docs.find(d=>d.id===me);
-  if(mine&&mine.upd&&Date.now()-mine.upd>3e5)rkSync(true);
-  const own=rkStats(),all=docs.filter(d=>d.id!==me).concat([Object.assign({id:me},own)]);
-  const qv=d=>wk?(d.wq||0):(d.q||0),qo=d=>wk?(d.wqok||0):(d.qok||0),mv=d=>wk?(d.wmin||0):(d.min||0);
-  const board=(title,key,val,fmt,sub)=>{const L=all.slice().sort((a,b)=>val(b)-val(a)||String(a.name).localeCompare(String(b.name))),mx=Math.max(1,...L.map(val));
-    return `<div class="card" style="padding:14px;margin:0 0 12px"><b>${title}</b>${L.map((d,i)=>{const you=d.id===me;return `<div style="display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;column-gap:10px;padding:10px 0;border-top:1px solid #8883"><div style="font-size:18px;font-weight:800;text-align:center;opacity:${i<3?1:.55}">${i+1}º</div><div style="min-width:0"><div style="font-weight:${you?800:600};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||'Usuário')}${you?' <span class="tiny muted">(você)</span>':''}</div><div style="height:6px;border-radius:4px;background:#8882;margin-top:6px;overflow:hidden"><div style="height:100%;width:${Math.round(val(d)/mx*100)}%;background:${you?'var(--accent)':'#8886'}"></div></div>${sub(d)?`<div class="tiny muted" style="margin-top:4px">${sub(d)}</div>`:''}</div><div style="font-weight:800;white-space:nowrap">${fmt(val(d))}</div></div>`}).join('')}</div>`};
-  const seg=(k,l)=>`<button class="chip ${P===k?'sel':''}" data-act="rkper" data-k="${k}">${l}</button>`;
-  return head('Ranking - Desafio','')+`<div class="row" style="gap:8px;margin:0 0 12px">${seg('week','Últimos 7 dias')}${seg('all','Total')}${seg('cal','Calendário')}</div>
-  ${P==='cal'?rkMonth(all,me):board('Questões respondidas','q',qv,v=>v,d=>qv(d)?Math.round(qo(d)/qv(d)*100)+'% de acerto':'')}
-  ${P==='cal'?'':board('Tempo de estudo','m',mv,hm,()=>'')+board('Dias seguidos de estudo','s',d=>d.sk||0,v=>v+(v===1?' dia':' dias'),d=>{const a=(d.skb||0)?'melhor sequência: '+d.skb+(d.skb===1?' dia':' dias'):'';const dv=rkDer(d),r=[...dv.rest].sort().filter(x=>weekStart(x)===weekStart(today()));const f=[...dv.fail].sort().filter(x=>weekStart(x)===weekStart(today()));return [a,r.length?'Descanso: '+r.map(x=>fdate(x).slice(0,5)).join(', '):'',f.length?'Falhou: '+f.map(x=>fdate(x).slice(0,5)).join(', '):''].filter(Boolean).join(' · ')})}
-  <div class="tiny muted" style="text-align:center;margin-top:6px">Cada pessoa aparece depois de abrir o app. Os números se atualizam a cada minuto.</div>`};
+  const P=V.rk.per,wk=P==='week',me=PFID,t=today(),M=V.rk.m||'xp';
+  const mine=V.rk.docs.find(d=>d.id===me);if(mine&&mine.upd&&Date.now()-mine.upd>3e5)rkSync(true);
+  const own=rkStats(),all=V.rk.docs.filter(d=>d.id!==me).concat([Object.assign({id:me},own)]);
+  const seg=(k,l)=>`<button class="chip ${P===k?'sel':''}" data-act="rkper" data-k="${k}">${l}</button>`,mseg=(k,l)=>`<button class="chip ${M===k?'sel':''}" data-act="rkm" data-k="${k}">${l}</button>`;
+  const top=head('Ranking - Desafio','')+RK_CSS+`<div class="rk-seg">${seg('week',rkI('flame')+' Semana')}${seg('all',rkI('trophy')+' Total')}${seg('cal',rkI('cal')+' Calendário')}</div>`;
+  if(P==='cal')return top+rkMonth(all,me);
+  const MX={xp:{v:d=>rkXp(d,wk),f:v=>v+' XP'},t:{v:d=>(wk?d.wmin:d.min)||0,f:hm},q:{v:d=>(wk?d.wq:d.q)||0,f:v=>v+' questões'},s:{v:d=>d.sk||0,f:v=>v+(v===1?' dia':' dias')}}[M];
+  const L=all.slice().sort((a,b)=>MX.v(b)-MX.v(a)||String(a.name).localeCompare(String(b.name))),lead=Math.max(1,MX.v(L[0]||{})),pos=L.findIndex(d=>d.id===me)+1;
+  const ear=rkEarned(own),tt=rkTitleOf(own),tx=rkXp(own,false),lv=rkLv(tx),a0=rkNeed(lv),a1=rkNeed(lv+1),pc=Math.round((tx-a0)/(a1-a0)*100);
+  let chase='';if(pos===1)chase=L[1]?`${rkI('crown','#facc15')} Você lidera! Vantagem de <b>${MX.f(MX.v(L[0])-MX.v(L[1]))}</b> sobre ${esc(L[1].name||'o 2º')}.`:rkI('crown','#facc15')+' Você está sozinho no topo. Chame alguém!';else if(pos>1){const n=L[pos-2];chase=`${rkI('target')} Faltam <b>${MX.f(MX.v(n)-MX.v(L[pos-1])+1)}</b> para passar ${esc(n.name||'o próximo')}.`}
+  const hero=`<div class="rk-hero"><div class="row" style="gap:12px">${rkAv(own.name,54)}<div class="grow" style="min-width:0"><div style="font-size:18px;font-weight:800">${esc(own.name||'Você')}</div><div class="tiny muted">Nível ${lv} · ${rkTitle(lv)}${tt?` · <b style="color:var(--accent)">${tt}</b>`:''}</div></div><div style="text-align:right"><div style="font-size:22px;font-weight:900">${tx}</div><div class="tiny muted">XP total</div></div></div>
+  <div class="rk-bar" style="margin-top:14px"><i style="width:${pc}%"></i></div><div class="tiny muted" style="margin-top:4px;display:flex;justify-content:space-between"><span>${tx-a0} / ${a1-a0} XP</span><span>Nível ${lv+1}: ${rkTitle(lv+1)}</span></div>
+  <div class="rk-tiles"><div class="rk-tile"><b>${pos}º</b><span>${wk?'na semana':'no total'}</span></div><div class="rk-tile"><b>${rkI('flame')} ${own.sk}</b><span>dias seguidos</span></div><div class="rk-tile"><b>${hm(own.wmin)}</b><span>nos 7 dias</span></div></div>${chase?`<div class="rk-chase">${chase}</div>`:''}</div>`;
+  const rows2=RK_A.map(a=>({a,cur:a[3](own)})).map(o=>Object.assign(o,{on:o.cur>=o.a[4],p:Math.min(1,o.cur/o.a[4])})),show=V.rk.ach?rows2.slice().sort((x,y)=>y.on-x.on||y.p-x.p):rows2.filter(o=>!o.on).sort((x,y)=>y.p-x.p).slice(0,4),
+    ach=show.map(({a,cur,on,p})=>`<div class="rk-a ${on?'on':'off'}"><div class="row" style="gap:6px"><span class="e">${rkI(a[1])}</span><b class="grow" style="line-height:1.2">${a[2]}</b></div><div class="rk-bar"><i style="width:${Math.round(p*100)}%"></i></div><div class="tiny muted" style="margin-top:4px;display:flex;justify-content:space-between"><span>${on?rkI('check','var(--ok)')+' Conquistado':Math.min(cur,a[4])+' / '+a[4]+' '+a[5]}</span><span style="color:var(--accent);font-weight:800">+${a[6]} XP</span></div>${a[7]?`<div class="tiny" style="margin-top:2px;opacity:.7">Título: ${a[7]}</div>`:''}</div>`).join('');
+  const pod=L.slice(0,3),po=[pod[1],pod[0],pod[2]],cls=[2,1,3],pcard=(d,i)=>d?`<div class="rk-pc rk-p${cls[i]} ${d.id===me?'me':''}" style="animation-delay:${i*.1}s">${cls[i]===1?`<div style="line-height:1">${rkI("crown","#facc15")}</div>`:''}${rkAv(d.name,cls[i]===1?64:52)}<div class="nm">${esc(d.name||'Usuário')}</div>${rkTitleOf(d)?`<div class="tiny" style="color:var(--accent);font-weight:700">${rkTitleOf(d)}</div>`:''}<div class="vl">${MX.f(MX.v(d))}</div><div class="rk-st" style="animation-delay:${i*.1}s">${cls[i]}º</div></div>`:'<div></div>';
+  const dots=d=>{const dv=rkDer(d),dm=d.dm||{};let h='';for(let i=6;i>=0;i--){const dt=addDays(t,-i);h+=`<i class="rkd ${(dm[dt]||0)>0?'ok':dv.at.has(dt)?'at':dv.rest.has(dt)?'rs':dv.fail.has(dt)?'fl':''}" title="${fdate(dt)}"></i>`}return h};
+  const rows=L.slice(3).map((d,i)=>{const you=d.id===me,l=rkLv(rkXp(d,false));return `<div class="rk-row ${you?'me':''}"><div class="pos">${i+4}º</div>${rkAv(d.name,38)}<div style="min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name||'Usuário')}${you?' <span class="tiny muted">(você)</span>':''}<span class="rk-lv">Nv ${l}${rkTitleOf(d)?' · '+rkTitleOf(d):''}</span></div><div class="rk-bar" style="height:6px;margin-top:6px"><i style="width:${Math.round(MX.v(d)/lead*100)}%;background:${you?'':'#8886'}"></i></div><div class="rk-dots">${dots(d)}</div></div><div style="font-weight:800;text-align:right">${MX.f(MX.v(d))}<div class="tiny muted">${d.sk?rkI('flame','#fb923c')+' '+d.sk:''}</div></div></div>`}).join('');
+  return top+hero+`<div class="rk-seg">${mseg('xp',rkI('bolt')+' XP')}${mseg('t',rkI('clock')+' Tempo')}${mseg('q',rkI('pen')+' Questões')}${mseg('s',rkI('flame')+' Sequência')}</div><div class="rk-pod">${po.map(pcard).join('')}</div>${rows}
+  <div class="row" style="margin:18px 0 8px"><h3 class="grow" style="margin:0;font-size:16px">Conquistas <span class="tiny muted">${ear.length}/${RK_A.length}</span></h3><button type="button" class="btn sm" data-act="rkach">${V.rk.ach?'Ver só as próximas':'Ver todas'}</button></div><div class="rk-ach">${ach}</div>${rkAtCard()}
+  <div class="tiny muted" style="text-align:center;line-height:1.5">XP = 1 por minuto de estudo + 3 por questão + 2 por acerto + bônus das conquistas (só no Total). Quadrados: últimos 7 dias (verde estudou, azul descanso, laranja atestado, vermelho falha).<br>Cada pessoa aparece depois de abrir o app. Atualiza a cada minuto.</div>`};
+ACT.rkach=()=>{V.rk.ach=!V.rk.ach;render()};ACT.rkm=b=>{V.rk.m=b.dataset.k;render()};
 ACT.rkper=b=>{V.rk.per=b.dataset.k;render()};
 ACT.rktip=b=>toast(b.dataset.t||'');
 ACT.rkmes=b=>{V.rkm=Math.min(0,Math.max(-2,(V.rkm||0)+(+b.dataset.d)));render()};
 /* descanso e falha deduzidos dos dias: 1º dia sem estudo da semana vira descanso; os seguintes viram falha (mesmo sem a pessoa abrir o app) */
-function rkDer(x){if(x._der)return x._der;const td=today(),rs=new Set(x.rest||[]),fl=new Set(x.fail||[]),dm=x.dm||{},f=Object.keys(dm).concat(x.rest||[],x.fail||[]).sort()[0],wr={};rs.forEach(r=>wr[weekStart(r)]=1);
-  if(f){let d=f,g=0;while(d<td&&g++<120){if(!(dm[d]>0)&&!rs.has(d)&&!fl.has(d)){const w=weekStart(d);if(wr[w])fl.add(d);else{rs.add(d);wr[w]=1}}d=addDays(d,1)}}
-  try{Object.defineProperty(x,'_der',{value:{rest:rs,fail:fl},enumerable:false,configurable:true})}catch(e){}return {rest:rs,fail:fl}}
+function rkDer(x){if(x._der)return x._der;const td=today(),rs=new Set(x.rest||[]),fl=new Set(x.fail||[]),at=new Set(x.atest||[]),dm=x.dm||{},f=Object.keys(dm).concat(x.rest||[],x.fail||[]).sort()[0],wr={};rs.forEach(r=>wr[weekStart(r)]=1);
+  if(f){let d=f,g=0;while(d<td&&g++<120){if(!(dm[d]>0)&&!rs.has(d)&&!fl.has(d)&&!at.has(d)){const w=weekStart(d);if(wr[w])fl.add(d);else{rs.add(d);wr[w]=1}}d=addDays(d,1)}}
+  try{Object.defineProperty(x,'_der',{value:{rest:rs,fail:fl,at:at},enumerable:false,configurable:true})}catch(e){}return {rest:rs,fail:fl,at:at}}
+function atRanges(){const a=(cfg().atest||[]).slice().sort(),o=[];a.forEach(d=>{const l=o[o.length-1];if(l&&addDays(l[1],1)===d)l[1]=d;else o.push([d,d])});return o}
+function rkAtCard(){const R=atRanges(),t=today();
+  return `<div class="rk-row" style="display:block;padding:12px;margin-top:14px"><div class="row" style="gap:8px"><b class="grow">Atestado</b><button type="button" class="btn sm" data-act="atestadd">Registrar atestado</button></div><div class="tiny muted" style="margin-top:6px;line-height:1.45">Dias de atestado médico ficam livres de estudo: não contam como falha nem gastam o descanso da semana, e não quebram a sequência.</div>${R.length?`<div style="margin-top:8px">${R.map(([a,b])=>`<div class="row" style="gap:8px;padding:6px 0;border-top:1px solid var(--line)"><i class="rkc at" style="width:14px;height:14px;flex:none;border-radius:4px"></i><span class="grow tiny">${a===b?fdate(a):fdate(a)+' a '+fdate(b)}</span><button type="button" class="btn sm" data-act="atestdel" data-a="${a}" data-b="${b}">Remover</button></div>`).join('')}</div>`:''}</div>`}
+ACT.atestadd=()=>{const t=today();sheet('Registrar atestado',`<p class="tiny muted">Escolha o período do atestado. Esses dias ficam livres de estudo. Pode registrar até 14 dias para trás e até 60 dias de uma vez.</p><label class="tiny muted">De</label><input type="date" name="de" value="${t}" required><label class="tiny muted" style="margin-top:8px;display:block">Até</label><input type="date" name="ate" value="${t}" required>`,async o=>{
+    const de=o.de,ate=o.ate;if(!de||!ate||ate<de){toast('Confira as datas');return false}
+    if(de<addDays(t,-14)){toast('Só dá para registrar até 14 dias para trás');return false}
+    const n=Math.round((new Date(ate+'T12:00:00')-new Date(de+'T12:00:00'))/864e5)+1;if(n>60){toast('Máximo de 60 dias de uma vez');return false}
+    const c=cfg(),ds=[];for(let i=0;i<n;i++)ds.push(addDays(de,i));const at=Array.from(new Set((c.atest||[]).concat(ds))).sort();
+    await put('settings','main',Object.assign({},strip(c),{atest:at,fail:(c.fail||[]).filter(x=>!ds.includes(x))}));toast('Atestado registrado');try{rkSync(true)}catch(e){}},{save:'Registrar'})};
+ACT.atestdel=async b=>{const a=b.dataset.a,e=b.dataset.b,c=cfg();await put('settings','main',Object.assign({},strip(c),{atest:(c.atest||[]).filter(x=>x<a||x>e)}));toast('Atestado removido');try{rkSync(true)}catch(e2){}};
+const RK_START='2026-11-22';
+function rkCh(x){const td=today(),dm=x.dm,rs=new Set(x.rest||[]),fl=new Set(x.fail||[]),at=new Set(x.atest||[]),wr={},o={ok:0,fl:0,mins:0,st:[],nd:!dm};rs.forEach(r=>wr[weekStart(r)]=1);
+  for(let i=0;i<30;i++){const d=addDays(RK_START,i);let s='';
+    if(d>td)s='fut';else if(!dm)s='nd';else{const mn=dm[d]||0;
+      if(mn>0){s='l'+(mn>=180?4:mn>=90?3:mn>=30?2:1);o.ok++;o.mins+=mn}
+      else if(at.has(d))s='at';
+      else if(d===td)s=rs.has(d)?'rs':'';
+      else if(rs.has(d))s='rs';
+      else if(fl.has(d)){s='fl';o.fl++}
+      else{const w=weekStart(d);if(wr[w]){s='fl';o.fl++}else{s='rs';wr[w]=1}}}
+    o.st.push([d,s])}
+  return o}
 function rkMonth(all,me){
-  const off=V.rkm||0,t0=new Date(today()+'T12:00:00'),f=new Date(t0.getFullYear(),t0.getMonth()+off,1,12),y=f.getFullYear(),m=f.getMonth(),nd=new Date(y,m+1,0).getDate(),wd=f.getDay(),pre=y+'-'+String(m+1).padStart(2,'0')+'-',td=today();
-  const nmM=f.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-  const cnt=d=>Object.keys(d.dm||{}).filter(k=>k.indexOf(pre)===0&&d.dm[k]>0).length;
-  const L=all.slice().sort((a,b)=>(a.id===me?-1:b.id===me?1:0)||cnt(b)-cnt(a)||String(a.name).localeCompare(String(b.name)));
-  const fst=x=>Object.keys(x.dm||{}).concat(x.rest||[],x.fail||[]).sort()[0]||'9999',isF=(x,dt,mn)=>!mn&&dt<td&&dt>=fst(x)&&!rkDer(x).rest.has(dt)&&rkDer(x).fail.has(dt);
-  const fc=x=>Array.from({length:nd},(_,i)=>pre+String(i+1).padStart(2,'0')).filter(dt=>isF(x,dt,(x.dm||{})[dt]||0)).length;
-  const cell=(d,x)=>{const dt=pre+String(d).padStart(2,'0'),mn=(x.dm||{})[dt]||0,fut=dt>td,rs=!mn&&dt<td&&dt>=fst(x)&&rkDer(x).rest.has(dt),fl=isF(x,dt,mn),qn=(x.dq||{})[dt]||0,qt=' · '+qn+(qn===1?' questão':' questões'),tip=fdate(dt)+' · '+(rs?'Dia de descanso':fl&&!mn&&!qn?'Dia sem estudo (falhou)':(mn?cicloH(mn)+' de estudo':'0 min de estudo')+qt);return `<div title="${tip}" data-act="rktip" data-t="${tip}" style="height:26px;border-radius:7px;font-size:11px;font-weight:800;line-height:26px;text-align:center;background:${rs?'var(--info-soft)':fl&&!mn?'var(--bad)':mn?'var(--ok)':'var(--line)'};color:${(mn&&!rs)||(fl&&!rs)?'#fff':'inherit'};${fl&&!mn&&!rs?'box-shadow:0 0 0 2px var(--bad),0 0 10px var(--bad);position:relative;':''}opacity:${fut?.35:1};${dt===td?'outline:2px solid var(--accent);outline-offset:1px':''}">${rs?'Desc.':fl&&!mn?'✖'+d:d}</div>`};
-  const hdr=['D','S','T','Q','Q','S','S'].map(x=>`<div class="tiny muted" style="text-align:center">${x}</div>`).join('');
-  const cards=L.map(x=>{const you=x.id===me,cells=Array.from({length:wd},()=>'<div></div>').join('')+Array.from({length:nd},(_,i)=>cell(i+1,x)).join('');
-    return `<div class="card" style="padding:12px;margin:0 0 10px"><div class="row"><b class="grow" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name||'Usuário')}${you?' <span class="tiny muted">(você)</span>':''}</b><span class="tiny muted">${cnt(x)} dia${cnt(x)===1?'':'s'} no mês${fc(x)?` · <b style="color:var(--bad)">✖ ${fc(x)} falha${fc(x)===1?'':'s'}</b>`:''}</span></div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px">${hdr}${cells}</div></div>`}).join('');
-  return `<div class="sec" style="margin-top:14px"><div class="row" style="margin:0 0 8px"><h2 class="grow" style="font-size:16px;text-transform:capitalize">Estudo no mês · ${esc(nmM)}</h2><button class="btn sm" data-act="rkmes" data-d="-1" ${off<=-2?'disabled':''}>←</button><button class="btn sm" data-act="rkmes" data-d="1" ${off>=0?'disabled':''}>→</button></div>${cards}<div class="tiny muted" style="margin-top:-2px">Mostra os últimos 70 dias de cada pessoa, a partir da versão que registra os dias. Passe o mouse (ou toque) no dia para ver tempo e questões. Desc. = descanso · ✖ vermelho = falha (dia sem lançamento depois que o descanso da semana já foi usado).</div></div>`}
+  const td=today(),n=Math.max(0,Math.min(30,Math.round((new Date(td+'T12:00:00')-new Date(RK_START+'T12:00:00'))/864e5)+1)),end=addDays(RK_START,29),started=td>=RK_START;
+  const L=all.map(x=>({x,c:rkCh(x)})).sort((a,b)=>(a.c.nd-b.c.nd)||((a.c.fl>0)-(b.c.fl>0))||b.c.ok-a.c.ok||String(a.x.name).localeCompare(String(b.x.name)));
+  const perf=L.filter(r=>!r.c.nd&&r.c.fl===0).length;
+  const hero=`<div class="rk-hero" style="padding:16px"><div class="row" style="gap:10px"><div class="grow"><div style="font-size:12px;font-weight:800;letter-spacing:.06em;opacity:.7">DESAFIO 30 DIAS</div><div style="font-size:22px;font-weight:900;margin-top:2px">${started?'Dia '+n+' de 30':'Começa em '+fdate(RK_START)}</div></div><div style="text-align:right"><div style="font-size:22px;font-weight:900">${perf}<span style="font-size:14px;opacity:.6"> / ${L.length}</span></div><div class="tiny muted">sem falhar</div></div></div>
+  <div class="rk-bar" style="margin-top:12px"><i style="width:${Math.round(n/30*100)}%"></i></div><div class="tiny muted" style="margin-top:4px;display:flex;justify-content:space-between"><span>${fdate(RK_START).slice(0,5)}</span><span>Fim em ${fdate(end).slice(0,5)}</span></div></div>`;
+  const lg=`<div class="rkc-lg"><span><i class="rkc l2"></i>Estudou</span><span><i class="rkc rs"></i>Descanso</span><span><i class="rkc at"></i>Atestado</span><span><i class="rkc fl">×</i>Falha</span></div>`;
+  const cards=L.map(({x,c})=>{const you=x.id===me,chip=c.nd?'<span class="rkch-c nd">sem dados</span>':c.fl?`<span class="rkch-c fl">${c.fl} ${c.fl===1?'falha':'falhas'}</span>`:'<span class="rkch-c ok">Perfeito</span>';
+    const cells=c.st.map(([d,s],i)=>{const mn=((x.dm||{})[d]||0),tip=fdate(d)+' · '+(s==='at'?'Atestado: livre de estudo':s==='rs'?'Dia de descanso':s==='fl'?'Dia sem estudo (falhou)':s==='nd'?'Sem dados deste dia (a pessoa precisa abrir o app atualizado)':s==='fut'?'Ainda não chegou':hm(mn)+' de estudo');
+      return `<div class="rkc ${s} ${d===td?'now':''}" data-act="rktip" data-t="${tip}">${s==='fl'?'×':i+1}</div>`}).join('');
+    return `<div class="rk-row" style="display:block;padding:12px;${you?'border-color:var(--accent)':''}"><div class="row" style="gap:10px">${rkAv(x.name,32)}<div class="grow" style="min-width:0"><div style="font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name||'Usuário')}${you?' <span class="tiny muted">(você)</span>':''}</div><div class="tiny muted">${c.nd?'—':c.ok+' '+(c.ok===1?'dia estudado':'dias estudados')+' · '+hm(c.mins)}</div></div>${chip}</div><div class="rkch-g">${cells}</div></div>`}).join('');
+  return hero+lg+cards+rkAtCard()+`<div class="tiny muted" style="text-align:center;line-height:1.5;margin-top:12px">Quem estuda todos os dias chega ao fim sem falhar. O 1º dia sem estudo da semana é descanso; os seguintes são falha. Atestado fica livre. Toque num dia para ver o tempo.</div>`}
+
 setTimeout(()=>{try{rkSync(true)}catch(e){}},12000);setInterval(()=>{try{if(document.visibilityState==='visible')rkSync()}catch(e){}},300000);
 
 VIEWS.dash=()=>{
