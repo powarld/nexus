@@ -1628,13 +1628,13 @@ const avP=(s,i)=>AVD[s]&&AVD[s][i]?AVD[s][i][1]:0,avN=(s,i)=>AVD[s][i][0],avLen=
 const AV_CROP={head:[82,0,860],full:[0,0,1024]};
 const _avM=new Map();
 function ecoAv(code,mode,xt){const k=code+'|'+mode+'|'+(xt||'');let r=_avM.get(k);if(r===undefined){if(_avM.size>600)_avM.clear();r=ecoAv0(code,mode,xt);_avM.set(k,r)}return r}
-function ecoAv0(code,mode,xt){const a=String(code||AV_DEF).split('.').map(x=>+x||0),g=(s,k)=>Math.min(a[k]||0,AVD[s].length-1),im=f=>f?`<img src="${AV_BASE}${f}.webp" alt="" draggable="false" decoding="async" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none">`:'';
+function ecoAv0(code,mode,xt){const a=String(code||AV_DEF).split('.').map(x=>+x||0),g=(s,k)=>Math.max(0,Math.min(a[k]||0,AVD[s].length-1)),im=f=>f?`<img src="${AV_BASE}${f}.webp" alt="" draggable="false" decoding="async" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none">`:'';
   const hr=AVD.hr[g('hr',1)][2]||[],hdd=AVD.hd[g('hd',4)][2],ouu=AVD.ou[g('ou',3)][2]||[],hid=hdd&&hdd[1]===1,rrr=AVD.rr[g('rr',10)][2],hidr=rrr&&rrr[1]===1,acc=AVD.ac[g('ac',5)][2],bkk=AVD.bk[g('bk',7)][2],nkk=AVD.nk[g('nk',6)][2],
     hf=hr[0]?(String(hr[0]).endsWith('_')?hr[0]+AVD.hc[g('hc',2)][2]:hr[0]):'',hbk=hr[1]==='@'?hf+'_b':hr[1],cr=AV_CROP[mode]||AV_CROP.head,s=cr[2],
     L=[bkk?im(bkk[1]):'',hdd&&hdd[2]?im(hdd[2]):'',im(hbk),im(ouu[1]),nkk&&nkk[1]?im(nkk[1]):'',im(rrr?rrr[0]:(g('gn',9)?'pf'+(g('sk',0)+1):AVD.sk[g('sk',0)][2])),im(ouu[0]),bkk?im(bkk[0]):'',nkk?im(nkk[0]):'',hid||hidr?'':im(hf),acc?im(acc[0]):'',hdd?im(hdd[0]):'',...(g('nk',6)?[]:(xt||[]).map(im))].join('');
   return `<span style="position:relative;display:block;width:100%;height:100%;overflow:hidden"><svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:100%;height:100%">${AVD.bg[g('bg',8)][2]}</svg><span style="position:absolute;left:${-cr[0]/s*100}%;top:${-cr[1]/s*100}%;width:${1024/s*100}%;height:${1024/s*100}%">${L}</span></span>`}
 const ecoSvg=(code)=>ecoAv(code);
-function avDefFor(n){let h=0;for(const c of String(n||'?'))h=(h*31+c.charCodeAt(0))>>>0;return [h%6,1,(h>>3)%4,0,0,0,0,0,0,(h>>5)%2,0].join('.')}
+function avDefFor(n){let h=0;for(const c of String(n||'?'))h=(h*31+c.charCodeAt(0))>>>0;return [h%6,1,(h>>>3)%4,0,0,0,0,0,0,(h>>>5)%2,0].join('.')}
 const avSet=(code,s,i)=>{const k=AV_SL.findIndex(x=>x[0]===s),a=String(code||AV_DEF).split('.');while(a.length<11)a.push('0');a[k]=String(i);return a.join('.')};
 const avCost=(e,code)=>{const a=String(code||AV_DEF).split('.');let n=0;AV_SL.forEach(([s],k)=>{const i=+a[k]||0,p=avP(s,i);if(p>0&&!e.own[s+':'+i])n+=p});return n};
 ACT.avcol=()=>{V.rk.avc=!V.rk.avc;avUp()};
