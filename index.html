@@ -1290,6 +1290,16 @@ const RK_A=[
 ['q500','pen','500 questões',d=>d.q||0,500,'q',300,'Questionador'],
 ['q1000','pen','1000 questões',d=>d.q||0,1000,'q',600,'Máquina de questões'],
 ['ac80','target','80% de acerto (mín. 100 questões)',d=>(d.q||0)>=100?Math.round((d.qok||0)/d.q*100):0,80,'%',200,'Sniper'],
+['sk60','flame','60 dias seguidos',d=>d.skb||d.sk||0,60,'dias',1200,'Máquina'],
+['sk100','flame','100 dias seguidos',d=>d.skb||d.sk||0,100,'dias',2500,'Intocável'],
+['h200','clock','200h de estudo',d=>Math.round((d.min||0)/60),200,'h',1200,'Dedicação total'],
+['h500','clock','500h de estudo',d=>Math.round((d.min||0)/60),500,'h',3000,'Lenda do estudo'],
+['q2500','pen','2500 questões',d=>d.q||0,2500,'q',1200,'Triturador'],
+['q5000','pen','5000 questões',d=>d.q||0,5000,'q',2500,'Imbatível'],
+['ok1000','check','1000 acertos',d=>d.qok||0,1000,'acertos',800,'Gabaritador'],
+['ok2500','check','2500 acertos',d=>d.qok||0,2500,'acertos',2000,'Gabarito vivo'],
+['ac85','target','85% de acerto (mín. 500 questões)',d=>(d.q||0)>=500?Math.round((d.qok||0)/d.q*100):0,85,'%',600,'Precisão cirúrgica'],
+['ac90','target','90% de acerto (mín. 1000 questões)',d=>(d.q||0)>=1000?Math.round((d.qok||0)/d.q*100):0,90,'%',1500,'Perfeição'],
 ['ch','trophy','Desafio: 30 dias sem falhar',d=>{const c=rkCh(d);return c.nd||c.fl?0:c.ok},30,'dias',1000,'Campeão do desafio']];
 const rkEarned=d=>RK_A.filter(a=>a[3](d)>=a[4]),rkBonus=d=>rkEarned(d).reduce((n,a)=>n+a[6],0),rkTitleOf=d=>{const e=rkEarned(d).filter(a=>a[7]);return e.length?e[e.length-1][7]:''};
 const rkBd=(d,n)=>{const e=rkEarned(d);if(!e.length)return '';return e.slice(-n).map(a=>rkI(a[1])).join('')+(e.length>n?`<span class="tiny muted">+${e.length-n}</span>`:'')};
