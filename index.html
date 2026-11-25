@@ -1491,7 +1491,7 @@ function duelBanner(me,all){duelEnsure(all);if(!V.rk.duelOk)return '';const t=to
 function duelView(all,me){
   duelEnsure(all);
   const t=today(),D=V.rk.duel||{},{act,nxt,ks}=duelRound(D,t),k=act||nxt,d=k&&D[k],M={};all.forEach(x=>{M[x.id]=x});V.rk.duelCur=act||null;
-  const nm=id=>(M[id]&&M[id].name)||(d&&d.names&&d.names[id])||'Usuário',pts=id=>M[id]&&act?duelPts(M[id],d.start,Math.min(t,d.end)):0,
+  const nm=id=>(M[id]&&M[id].name)||(d&&d.names&&d.names[id])||'Usuário',pts=id=>M[id]&&act?duelPts(M[id],d.start,(t<d.end?t:d.end)):0,
     stk=(V.rk.dst||{})[me]||0,sb=Math.min(100,25*stk),lg=`<div class="tiny muted" style="margin:0 0 12px;line-height:1.45">Liga de elite: só os ${DUEL_N} primeiros do ranking geral duelam. Todo mundo acompanha.</div>`;
   let hero;
   if(!V.rk.duelOk)hero=`<div class="rk-hero"><div class="tiny muted">Carregando duelos…</div></div>`;
