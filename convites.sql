@@ -10,6 +10,7 @@ create table if not exists public.invite_codes(
   used_at timestamptz
 );
 alter table public.invite_codes enable row level security;
+grant select, insert, update, delete on public.invite_codes to authenticated;
 drop policy if exists invite_admin_all on public.invite_codes;
 create policy invite_admin_all on public.invite_codes for all to authenticated
   using (exists(select 1 from public.admins a where a.user_id=auth.uid()))
