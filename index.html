@@ -1079,7 +1079,9 @@ async function saImportSync(sb,uid,em){
     if(!j.em||String(j.em).toLowerCase()!==String(em||'').toLowerCase()){toast('Este envio é para a conta '+(j.em||'(não informada)')+', mas você está logado(a) como '+(em||'outra conta')+'. Nada foi importado. Saia, entre com a conta certa e abra o link de novo.');return}
     const b=busy('Importando estudos do app…');
     for(let i=0;i<rows.length;i+=100){const r=await sb.from('docs').upsert(rows.slice(i,i+100),{onConflict:'user_id,coll,id'});if(r.error){b.end();toast('Falha ao importar: '+r.error.message);return}}
-    b.end();toast('Importado: '+rows.length+' dias. Recarregando…');setTimeout(()=>location.reload(),900)
+    let ne='';
+    if(j.eco&&typeof j.eco==='object'){try{const ex=await sb.from('docs').select('data').eq('user_id',uid).eq('coll','d/settings').eq('id','main').maybeSingle();const sd=(ex.data&&ex.data.data)||{},se=Object.assign({cl:{},bk:{},sp:0},sd.eco||{});const cl={};Object.keys(se.cl||{}).forEach(k=>{if(!/^imp:/.test(k))cl[k]=se.cl[k]});Object.keys(j.eco.cl||{}).forEach(k=>{cl[k]=+j.eco.cl[k]||0});const bk=Object.assign({},se.bk||{});Object.keys(j.eco.bk||{}).forEach(k=>{bk[k]=+j.eco.bk[k]||0});const eco=Object.assign({},se,{cl,bk,sp:Math.max(+se.sp||0,+j.eco.sp||0)});const r2=await sb.from('docs').upsert({user_id:uid,coll:'d/settings',id:'main',data:Object.assign({},sd,{eco}),updated_at:new Date().toISOString()},{onConflict:'user_id,coll,id'});if(!r2.error)ne=' e moedas'}catch(e){console.error(e)}}
+    b.end();toast('Importado: '+rows.length+' dias'+ne+'. Recarregando…');setTimeout(()=>location.reload(),900)
   }catch(e){console.error(e);toast('Link de importação inválido')}
 }
 function saRoot(sb,uid){
