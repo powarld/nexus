@@ -1784,7 +1784,7 @@ function kbView(c,d){
   const hd=`<div style="margin:2px 0 14px">${V.stack.length?'<button class="btn sm" data-act="back" style="margin-bottom:10px">← Voltar</button>':''}<div class="tiny muted" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase">${meta}</div><h1 style="font-size:24px;margin-top:6px;overflow-wrap:anywhere">${esc(ttl)}</h1>${sub?`<div class="muted" style="margin-top:6px;font-size:14px;line-height:1.4">${esc(sub)}</div>`:''}${d.origin?`<div class="tiny muted" style="margin-top:6px">Origem: ${esc(d.origin)}</div>`:''}</div>`;
   const more=`<button class="btn sm" data-act="reload">Atualizar</button>${!isMat?`<button class="btn sm" data-act="secpick" ${a}>Editar por seção</button>${ADMIN?`<button class="btn sm" data-act="seccom" ${a} data-k="0">Comentar</button>`:''}<button class="btn sm" data-act="histv" ${a}>Histórico (${(d.hist||[]).length})</button><button class="btn sm" data-act="copyit" ${a}>Copiar texto</button><button class="btn sm" data-act="dlmd" ${a}>Baixar .md</button>`:''}${d.url?`<a class="btn sm" href="${esc(d.url)}" target="_blank" rel="noopener">Abrir link</a>`:''}${isMat&&d.assetUrl?`<a class="btn sm" href="${esc(d.assetUrl)}" target="_blank" rel="noopener">Abrir original</a>`:''}<button class="btn sm" data-act="relate" ${a}>Relacionar</button><button class="btn sm" data-act="tabdup">Abrir em nova aba</button>`;
   const ai=`<button class="btn sm" data-act="ai" data-q="sumarizar" ${a}>Resumir</button>`.repeat(isMat||c==='summaries'?1:0)+`<button class="btn sm" data-act="ai" data-q="flash" ${a}>Gerar flashcards</button><button class="btn sm" data-act="ai" data-q="rel" ${a}>Achar relacionados</button>`+(c==='summaries'?`<button class="btn sm" data-act="ai" data-q="rapida" ${a}>Revisão rápida</button><button class="btn sm" data-act="ai" data-q="vespera" ${a}>Revisão de véspera</button><button class="btn sm" data-act="ai" data-q="mapa" ${a}>Mapa conceitual</button>`:'');
-  return hd+rdBar(c,d)+`
+  return hd+rdBar(c,d)+revCard(c,d)+`
   <div class="row" style="gap:8px;margin-bottom:10px"><button class="btn sm pri" data-act="edit" ${a}>Editar</button>${hlBtn(c,d)}${isMat?'':'<button class="btn sm" data-act="fnd">Buscar</button>'}${nm?`<button class="btn sm" data-act="mmfrom" ${a}>Mapas mentais (${nm})</button>`:''}</div>
   <details style="margin-bottom:10px"><summary class="tiny muted" style="cursor:pointer;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:6px 0">Mais ações</summary><div class="row" style="gap:8px;margin-top:6px">${more}</div></details>
   
@@ -1963,6 +1963,85 @@ ACT.rdupto=async b=>{const c=b.dataset.c,d=get(c,b.dataset.id);if(!d)return;cons
 ACT.rdstop=async b=>{const c=b.dataset.c,d=get(c,b.dataset.id);if(!d)return;const it=Object.assign({},(rdDoc(c,d.id)||{}).items||{}),secs=rdSecs(d),k=+b.dataset.k,now=Date.now();secs.forEach(s=>{if(s.k<=k)it[s.key]=it[s.key]||now});const sc=secs.find(s=>s.k===k)||{};V.keepScroll=true;await rdSave(c,d,it,{stop:{key:sc.key||b.dataset.key,k,title:sc.title||'',at:now}});toast('📍 Parei aqui: '+clip(sc.title||'',40))};
 ACT.rdreset=b=>{const c=b.dataset.c,d=get(c,b.dataset.id);if(!d)return;confirmDel('Zerar o progresso de leitura deste resumo?',async()=>{await rdSave(c,d,{},{stop:null})})};
 ACT.rdgo=b=>{const c=b.dataset.c,d=get(c,b.dataset.id);if(!d)return;markRecent(c,d.id);go('kb',{c,id:d.id,anchor:b.dataset.t||'',q:''},V.view!=='kb')};
+/* ---- revisão rápida (sem IA): incidência por bloco, erros por bloco e recall relâmpago ---- */
+(function(){const st=document.createElement('style');st.textContent='.incb,.errb{display:inline-block;font:700 10px/1 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:999px;margin-left:8px;vertical-align:middle;border:1px solid currentColor;white-space:nowrap}.inc-alta{color:#fb7185}.inc-media{color:#fbbf24}.inc-baixa{color:#38bdf8}.inc-baixissima{color:var(--muted,#999)}.errb{color:#fff;background:#e11d48;border-color:#e11d48}.revc .chip2{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:9px 10px;margin-top:6px;border:1px solid var(--line,#444);border-radius:10px;background:transparent;color:inherit;font-size:14px;cursor:pointer}.revc .chip2 .grow{flex:1;min-width:0;overflow-wrap:anywhere}.rclq{font-size:16px;line-height:1.5;margin:10px 0}.rclq p{margin:.4em 0}.rclb{display:flex;gap:8px;margin-top:10px}.rclb .btn{flex:1}';document.head.appendChild(st)})();
+const INC_L={alta:['Alta',3],media:['Média',2],baixa:['Baixa',1.2],baixissima:['Baixíssima',1]};
+const incKey=v=>norm(String(v||'')).replace(/[^a-z]/g,'');
+const revNum=t=>{const m=String(t||'').match(/^\s*(\d+)\s*[·.:)\-]/);return m?m[1]:''};
+function revBlocks(d){
+  const {L,secs}=mdSecs(d.md||''),rs=rdSecs(d),out=[];
+  secs.slice(1).forEach((s,i)=>{if(s.lvl!==2)return;const r=rs[i];if(!r)return;const nt=norm(s.title);
+    if(/^(colinha|pares que|se a quest)/.test(nt))return;
+    const txt=L.slice(s.s,s.e).join('\n');
+    out.push({k:r.k,key:r.key,title:s.title,num:revNum(s.title),tok:new Set(mmTokens(txt)),tt:new Set(mmTokens(s.title))})});
+  return out}
+const REVM={};
+function revErr(d){
+  const wrong=S.questions.filter(q=>d.topicId&&q.topicId===d.topicId&&q.marked&&q.marked!=='__nao'&&!isOk(q));
+  const sig=d.id+'|'+(d.md||'').length+'|'+wrong.length+'|'+S.questions.length;
+  if(REVM[d.id]&&REVM[d.id].sig===sig)return REVM[d.id].v;
+  const bl=revBlocks(d),df={};
+  bl.forEach(b=>b.tok.forEach(t=>df[t]=(df[t]||0)+1));
+  const idf=t=>Math.log(1+bl.length/(df[t]||1)),by={};let un=0;
+  wrong.forEach(q=>{
+    const ct=new Set(mmTokens(q.covt||'')),qt=new Set(mmTokens((q.covt||'')+' '+(q.statement||'')+' '+((q.expl&&q.expl.correta)||'')));
+    let best=null,bs=0;
+    bl.forEach(b=>{let s=0;qt.forEach(t=>{if(b.tok.has(t))s+=idf(t)});ct.forEach(t=>{if(b.tt.has(t))s+=3*idf(t)});if(s>bs){bs=s;best=b}});
+    if(best&&bs>=2.2){const e=by[best.key]||(by[best.key]={n:0,b:best});e.n++}else un++});
+  const top=Object.values(by).map(e=>{const w=(INC_L[incKey(d.inc&&d.inc[e.b.num])]||['',1.5])[1];return {n:e.n,b:e.b,p:e.n*w}}).sort((x,y)=>y.p-x.p||y.n-x.n);
+  const v={n:wrong.length,un,by,top};REVM[d.id]={sig,v};return v}
+function revHB(d,inner,rs){
+  const n=revNum(inner.replace(/<[^>]+>/g,'')),L=INC_L[incKey(d.inc&&d.inc[n])],e=rs&&revErr(d).by[rs.key];
+  return (L?`<span class="incb inc-${incKey(d.inc[n])}" title="Incidência em prova: ${L[0]}">${L[0]}</span>`:'')+(e?`<span class="errb" title="Questões que você errou neste bloco">${e.n} ${e.n>1?'erros':'erro'}</span>`:'')}
+function revQs(d){
+  const L=String(d.md||'').split('\n'),out=[];let sec='',secNum='';
+  for(let i=0;i<L.length;i++){
+    const h=L[i].match(/^##\s+(.*)$/);if(h){sec=h[1].trim();secNum=revNum(sec);continue}
+    if(!/^>\s*\[!question\]/.test(L[i]))continue;
+    const head=L[i].replace(/^>\s*\[!question\]\s*/,'');let j=i+1;const st=[];
+    while(j<L.length&&/^>/.test(L[j])){st.push(L[j].replace(/^>\s?/,''));j++}
+    const body=st.filter(x=>x.trim()).join(' ').trim();
+    if(!body||/(^|\s)[A-E]\)\s/.test(body))continue;
+    let ans='',com='';
+    for(let k=j;k<Math.min(L.length,j+8);k++){const m=L[k].match(/\*\*Gabarito:\s*(Certo|Errado)\.?\*\*\s*(.*)$/i);if(m){ans=/^c/i.test(m[1])?'C':'E';com=m[2];break}}
+    if(ans)out.push({head,stmt:body,ans,com,sec,secNum})}
+  return out}
+function revCard(c,d){
+  if(c!=='summaries'||!d.md)return '';
+  const rq=revQs(d),er=revErr(d),a=`data-c="${c}" data-id="${d.id}"`,hasInc=d.inc&&Object.keys(d.inc).length;
+  if(rq.length<3&&!er.n&&!hasInc)return '';
+  const chip=(b,extra)=>`<button type="button" class="chip2" ${a} data-act="rdgo" data-t="${esc(b.title)}"><span class="grow"><b>${esc(clip(b.title,70))}</b></span>${extra}</button>`;
+  let body='';
+  if(er.top.length){
+    body+=`<div class="tiny muted" style="margin-top:8px">Você errou <b>${er.n}</b> ${er.n>1?'questões':'questão'} deste assunto. Revise nesta ordem:</div>`+er.top.slice(0,4).map(e=>{const L=INC_L[incKey(d.inc&&d.inc[e.b.num])];return chip(e.b,`<span class="errb">${e.n} ${e.n>1?'erros':'erro'}</span>${L?`<span class="incb inc-${incKey(d.inc[e.b.num])}">${L[0]}</span>`:''}`)}).join('')+(er.un?`<div class="tiny muted" style="margin-top:6px">${er.un} ${er.un>1?'erros':'erro'} sem bloco definido: veja o assunto inteiro.</div>`:'');
+  }else if(hasInc){
+    const bl=revBlocks(d).filter(b=>d.inc[b.num]).sort((x,y)=>(INC_L[incKey(d.inc[y.num])]||[0,0])[1]-(INC_L[incKey(d.inc[x.num])]||[0,0])[1]).slice(0,3);
+    body+=`<div class="tiny muted" style="margin-top:8px">${er.n?'':'Sem erros registrados neste assunto. '}Mais cobrados em prova:</div>`+bl.map(b=>chip(b,`<span class="incb inc-${incKey(d.inc[b.num])}">${INC_L[incKey(d.inc[b.num])][0]}</span>`)).join('')}
+  else if(!er.n)body+=`<div class="tiny muted" style="margin-top:8px">Sem erros registrados neste assunto.</div>`;
+  return `<div class="card revc" style="margin:0 0 12px;padding:12px"><div class="row" style="align-items:center;gap:8px;flex-wrap:wrap"><b style="font-size:14px">Revisão rápida</b><span class="grow"></span>${rq.length>=3?`<button type="button" class="btn sm pri" ${a} data-act="rclstart">Recall relâmpago · ${Math.min(5,rq.length)}</button>`:''}</div>${body}</div>`}
+let RCL=null;
+ACT.rclstart=b=>{
+  const c=b.dataset.c,d=get(c,b.dataset.id);if(!d)return;
+  const all=revQs(d),er=revErr(d),rd=(rdDoc(c,d.id)||{}).items||{},rs=rdSecs(d);
+  const errNums=new Set(Object.values(er.by).map(e=>e.b.num));
+  const unread=num=>{const r=rs.find(x=>revNum(x.title)===num);return r&&!rd[r.key]};
+  const sc=x=>(errNums.has(x.secNum)?0:unread(x.secNum)?1:2)+Math.random()*.9;
+  const it=all.slice().sort((x,y)=>sc(x)-sc(y)).slice(0,5).sort(()=>Math.random()-.5);
+  RCL={c,id:d.id,it,i:0,ok:0,ans:null,miss:[]};
+  sheet('Recall relâmpago','<div id="rcl"></div>',()=>{},{save:'Fechar',noSave:true,nofocus:true});rclPaint()};
+function rclPaint(){
+  const el=$('#rcl');if(!el||!RCL)return;const R=RCL,a=`data-c="${R.c}" data-id="${R.id}"`;
+  if(R.i>=R.it.length){
+    const miss=[];R.miss.forEach(x=>{if(x.sec&&!miss.some(m=>m.sec===x.sec))miss.push(x)});
+    el.innerHTML=`<div style="font-size:28px;font-weight:800">${R.ok}/${R.it.length}</div><div class="muted" style="margin-bottom:8px">${R.ok===R.it.length?'Tudo certo. Siga para o próximo assunto.':'Reforce estes blocos:'}</div>${miss.map(x=>`<button type="button" class="chip2" style="display:flex;width:100%;text-align:left;padding:9px 10px;margin-top:6px;border:1px solid var(--line,#444);border-radius:10px;background:transparent;color:inherit" ${a} data-act="rclgo" data-t="${esc(x.sec)}"><span class="grow"><b>${esc(clip(x.sec,70))}</b></span></button>`).join('')}<div class="rclb"><button type="button" class="btn" data-act="rclredo" ${a}>Refazer</button></div>`;return}
+  const x=R.it[R.i];
+  el.innerHTML=`<div class="tiny muted">${R.i+1} de ${R.it.length}${x.sec?' · '+esc(clip(x.sec,50)):''}</div><div class="rclq md">${md(x.stmt)}</div>`+
+  (R.ans===null?`<div class="rclb"><button type="button" class="btn" data-act="rclans" data-v="C">Certo</button><button type="button" class="btn" data-act="rclans" data-v="E">Errado</button></div>`:
+  `<div class="warnbox" style="margin:8px 0;${R.ans===x.ans?'':''}"><b>${R.ans===x.ans?'Acertou.':'Errou.'}</b> Gabarito: ${x.ans==='C'?'Certo':'Errado'}.</div>${x.com?`<div class="md" style="font-size:14px">${md(x.com)}</div>`:''}<div class="rclb"><button type="button" class="btn pri" data-act="rclnext">${R.i+1>=R.it.length?'Ver resultado':'Próxima'}</button></div>`)}
+ACT.rclans=b=>{if(!RCL||RCL.ans!==null)return;const x=RCL.it[RCL.i];RCL.ans=b.dataset.v;if(RCL.ans===x.ans)RCL.ok++;else RCL.miss.push(x);rclPaint()};
+ACT.rclnext=()=>{if(!RCL)return;RCL.i++;RCL.ans=null;rclPaint()};
+ACT.rclredo=b=>ACT.rclstart(b);
+ACT.rclgo=b=>{closeSheet();ACT.rdgo(b)};
 function rdBar(c,d){
   if(c!=='summaries'&&c!=='notes')return '';const st=rdStats(c,d);if(!st.total)return '';
   const a=`data-c="${c}" data-id="${d.id}"`;
@@ -2077,7 +2156,7 @@ function mdTools(c,d,html,k0,n0,ctx){
   const part=k0!==undefined,{secs}=part?{secs:[]}:mdSecs(d.md),hc=(html.match(/<h[1-6][ >]/g)||[]).length;ctx=ctx||mdCtx(c,d);
   const a=`data-c="${c}" data-id="${d.id}"`;
   const RS=ctx.RS,RD=ctx.RD;
-  if(part||hc===secs.length-1){let k=k0||0;html=html.replace(/<h([1-6])([^>]*)>([\s\S]*?)<\/h\1>/g,(m,l,at,inner)=>{k++;const mp=(c==='summaries'||c==='notes')?ctx.hm.get(mmHN(inner.replace(/<[^>]+>/g,''))):null;const rs=(c==='summaries'||c==='notes')?RS[k-1]:null,isR=rs&&RD[rs.key],stp=c==='summaries'?(rdDoc(c,d.id)||{}).stop:null,isS=!!(rs&&stp&&stp.key===rs.key);return `<h${l}${at}${isR?' data-rd="1"':''}${isS?' data-stop="1"':''}>${inner}<span class="sec-tools">${rs?`<button type="button" ${a} class="rb${isS?' on':''}" data-act="rdstop" data-k="${rs.k}" data-key="${esc(rs.key)}" title="Parei a leitura aqui" aria-label="Parei a leitura aqui"><i></i></button><button type="button" ${a} class="rb tg${isR?' ok':''}" data-act="rdtog" data-key="${esc(rs.key)}" title="${isR?'Lido: toque para desmarcar':'Marcar como lido'}" aria-label="Marcar como lido">${RDCK}</button><button type="button" ${a} class="rb" data-act="rdupto" data-k="${rs.k}" title="Marcar tudo até aqui como lido" aria-label="Marcar tudo até aqui como lido">${RDDN}</button>`:''}${mp?`<button type="button" data-act="mmfromh" data-id="${mp.id}" title="Ver mapa mental deste título">🧠</button>`:''}<button type="button" ${a} data-act="secedit" data-k="${k}" title="Editar seção">✏️</button>${ADMIN?`<button type="button" ${a} data-act="seccom" data-k="${k}" title="Comentar">💬</button>`:''}<button type="button" ${a} data-act="secdel" data-k="${k}" title="Excluir seção">🗑</button></span></h${l}>`})}
+  if(part||hc===secs.length-1){let k=k0||0;html=html.replace(/<h([1-6])([^>]*)>([\s\S]*?)<\/h\1>/g,(m,l,at,inner)=>{k++;const mp=(c==='summaries'||c==='notes')?ctx.hm.get(mmHN(inner.replace(/<[^>]+>/g,''))):null;const rs=(c==='summaries'||c==='notes')?RS[k-1]:null,isR=rs&&RD[rs.key],stp=c==='summaries'?(rdDoc(c,d.id)||{}).stop:null,isS=!!(rs&&stp&&stp.key===rs.key);return `<h${l}${at}${isR?' data-rd="1"':''}${isS?' data-stop="1"':''}>${inner}${l==='2'&&c==='summaries'?revHB(d,inner,rs):''}<span class="sec-tools">${rs?`<button type="button" ${a} class="rb${isS?' on':''}" data-act="rdstop" data-k="${rs.k}" data-key="${esc(rs.key)}" title="Parei a leitura aqui" aria-label="Parei a leitura aqui"><i></i></button><button type="button" ${a} class="rb tg${isR?' ok':''}" data-act="rdtog" data-key="${esc(rs.key)}" title="${isR?'Lido: toque para desmarcar':'Marcar como lido'}" aria-label="Marcar como lido">${RDCK}</button><button type="button" ${a} class="rb" data-act="rdupto" data-k="${rs.k}" title="Marcar tudo até aqui como lido" aria-label="Marcar tudo até aqui como lido">${RDDN}</button>`:''}${mp?`<button type="button" data-act="mmfromh" data-id="${mp.id}" title="Ver mapa mental deste título">🧠</button>`:''}<button type="button" ${a} data-act="secedit" data-k="${k}" title="Editar seção">✏️</button>${ADMIN?`<button type="button" ${a} data-act="seccom" data-k="${k}" title="Comentar">💬</button>`:''}<button type="button" ${a} data-act="secdel" data-k="${k}" title="Excluir seção">🗑</button></span></h${l}>`})}
   let n=n0||0;html=html.replace(/<blockquote>(\s*<p>\s*💬)/g,(m,x)=>{const t=`<blockquote><span class="sec-tools" style="float:right"><button type="button" ${a} data-act="comedit" data-n="${n}">✏️</button><button type="button" ${a} data-act="comdel" data-n="${n}">🗑</button></span>${x}`;n++;return t});
   return html;
 }
