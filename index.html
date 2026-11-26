@@ -913,12 +913,30 @@ function openRecord(c,id,fromRecent){
 
 /* ---- ações ---- */
 const ACT={};
+const INVAL='ABCDEFGHJKMNPQRSTUVWXYZ23456789',invFmt=c=>String(c||'').replace(/(.{4})(.+)/,'$1-$2');
+async function invRender(){
+  const box=document.getElementById('invbox');if(!box)return;const sb=window.__sb;
+  const r=await sb.from('invite_codes').select('*').order('created_at',{ascending:false}).limit(200);
+  if(r.error){box.innerHTML='<div class="tiny" style="color:var(--warn,#fbbf24)">Não foi possível carregar. Rode o arquivo convites.sql no Supabase (veja o README).</div>';return}
+  const now=Date.now(),L=r.data||[];
+  box.innerHTML=L.length?L.map(x=>{const used=!!x.used_by,exp=!used&&x.expires_at&&new Date(x.expires_at).getTime()<now;
+    return `<div class="item" style="flex-wrap:wrap;gap:6px"><span class="t"><b style="letter-spacing:1px">${esc(invFmt(x.code))}</b><span class="tiny muted" style="display:block">${esc(x.note||'sem nome')} · ${used?'usado por '+esc(x.used_email||'?')+' em '+new Date(x.used_at).toLocaleDateString('pt-BR'):exp?'vencido':'livre'+(x.expires_at?' até '+new Date(x.expires_at).toLocaleDateString('pt-BR'):'')}</span></span>${!used&&!exp?`<button type="button" class="btn sm" data-act="invcopy" data-code="${esc(x.code)}">Copiar convite</button>`:''}${!used?`<button type="button" class="btn sm ghost" data-act="invdel" data-code="${esc(x.code)}">Revogar</button>`:''}</div>`}).join(''):'<div class="tiny muted">Nenhum convite ainda.</div>'}
+ACT.invites=()=>{sheet('Convites de cadastro',`<div class="tiny muted" style="margin-bottom:8px">Só entra quem tiver um código seu. Cada código vale para uma pessoa.</div><div class="row" style="gap:6px;flex-wrap:wrap"><input id="invnote" maxlength="60" placeholder="Nome da pessoa (opcional)" style="flex:1;min-width:150px"><select id="invdays"><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="0">Sem prazo</option></select><button type="button" class="btn pri" data-act="invnew">Gerar código</button></div><div id="invbox" class="list" style="margin-top:12px"><div class="tiny muted">Carregando...</div></div>`,()=>{},{save:'Fechar',noSave:true});invRender()};
+ACT.invnew=async()=>{const sb=window.__sb,note=(document.getElementById('invnote')||{}).value||'',dd=+((document.getElementById('invdays')||{}).value||0);
+  const a=new Uint32Array(8);crypto.getRandomValues(a);const code=Array.from(a,v=>INVAL[v%INVAL.length]).join('');
+  const r=await sb.from('invite_codes').insert({code,note:note.trim(),expires_at:dd?new Date(Date.now()+dd*864e5).toISOString():null});
+  if(r.error){toast('Erro ao gerar: '+r.error.message);return}
+  const n=document.getElementById('invnote');if(n)n.value='';ACT.invcopy({dataset:{code}});invRender()};
+ACT.invcopy=async b=>{const c=b.dataset.code,link=location.origin+location.pathname+'#convite='+c;
+  const txt='Seu convite para o NEXUS: '+link+'\nOu abra o site, toque em "Criar conta" e use o código '+invFmt(c)+'.';
+  try{await navigator.clipboard.writeText(txt);toast('Convite copiado')}catch(e){prompt('Copie o convite:',txt)}};
+ACT.invdel=async b=>{const r=await window.__sb.from('invite_codes').delete().eq('code',b.dataset.code).is('used_by',null);if(r.error){toast('Erro: '+r.error.message);return}toast('Convite revogado');invRender()};
 ACT.testnew=()=>{try{localStorage.setItem('nx-test','t'+Date.now().toString(36))}catch(e){}location.reload()};
 ACT.testlast=()=>{try{localStorage.setItem('nx-test',localStorage.getItem('nx-test-last')||'')}catch(e){}location.reload()};
 ACT.testexit=()=>{try{localStorage.setItem('nx-test-last',localStorage.getItem('nx-test')||'');localStorage.removeItem('nx-test')}catch(e){}location.reload()};
 ACT.profsw=()=>{
   if(window.__test){sheet('Usuário de teste',`<div class="tiny muted" style="margin-bottom:8px">Você está numa conta de teste, separada da sua. Os dados dela não aparecem na sua conta.</div><label class="tiny muted">Nome</label><input name="n" required maxlength="60" value="${esc(PFNAME)}"><button type="button" class="btn" data-act="testexit" style="margin-top:14px;width:100%">Voltar à minha conta</button>`,async d=>{const n=String(d.n||'').trim();if(!n)return false;PFNAME=n;try{await PFREF.update({name:n})}catch(e){}try{renderNav()}catch(e){}toast('Nome atualizado')});return}
-  if(ADMIN){let last='';try{last=localStorage.getItem('nx-test-last')||''}catch(e){}sheet('Conta',`<div class="tiny muted" style="margin-bottom:10px">Você é o administrador. Para testar como uma pessoa comum, entre como usuário de teste: ele começa do zero, com o conteúdo pronto do concurso.</div><button type="button" class="btn pri" data-act="testnew" style="width:100%">Entrar como usuário de teste novo</button>${last?'<button type="button" class="btn" data-act="testlast" style="width:100%;margin-top:8px">Voltar ao último usuário de teste</button>':''}`,()=>{},{save:'Fechar'});return}
+  if(ADMIN){let last='';try{last=localStorage.getItem('nx-test-last')||''}catch(e){}sheet('Conta',`<div class="tiny muted" style="margin-bottom:10px">Você é o administrador. Para testar como uma pessoa comum, entre como usuário de teste: ele começa do zero, com o conteúdo pronto do concurso.</div><button type="button" class="btn pri" data-act="testnew" style="width:100%">Entrar como usuário de teste novo</button>${last?'<button type="button" class="btn" data-act="testlast" style="width:100%;margin-top:8px">Voltar ao último usuário de teste</button>':''}<button type="button" class="btn" data-act="invites" style="width:100%;margin-top:8px">Convites de cadastro</button>`,()=>{},{save:'Fechar'});return}
   if(PFREF){sheet('👤 Meu perfil',`<label class="tiny muted">Nome</label><input name="n" required maxlength="60" value="${esc(PFNAME)}"><div class="tiny muted" style="margin-top:8px">E-mail da conta: <b id="pfem">…</b></div><div class="tiny muted" style="margin-top:6px">Seus dados ficam ligados ao e-mail da conta. O nome é só o que aparece na tela e no ranking: mudar o nome não muda nem separa nenhum dado.</div>`,async d=>{const n=String(d.n||'').trim();if(!n)return false;PFNAME=n;try{await PFREF.update({name:n})}catch(e){}try{renderNav()}catch(e){}try{rkSync(true)}catch(e){}toast('Perfil atualizado')});setTimeout(async()=>{try{const e=$('#pfem');if(!e)return;const sn=await PFREF.get(),d=sn&&sn.exists?sn.data():null;let m=d&&d.email;if(!m&&typeof US!=='undefined'&&US&&US.me){const u=await US.me();m=u&&u.email}e.textContent=m||'—'}catch(x){}},50);return}toast('Conta: '+pfName())};
 document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
@@ -1007,12 +1025,13 @@ function saSave(o){try{const d=o&&o.data;const b=d instanceof Blob?d:new Blob([d
 function saLogin(sb){
   return new Promise(res=>{
     const d=document.createElement('div');d.id='salogin';d.style.cssText='position:fixed;inset:0;z-index:1000;background:var(--bg,#0A0A0A);color:var(--fg,#F4F4EF);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;overflow:auto';
-    let mode='in';
+    let mode='in';const INV=(String(location.hash).match(/^#convite=([\w\-]+)$/)||[])[1]||'';if(INV)mode='up';
     const draw=()=>{d.innerHTML=`<div class="logo" style="padding:0">NEXUS<small>Segundo cérebro</small></div><h1 style="font-size:22px;margin:4px 0 0">${mode==='in'?'Entrar':mode==='up'?'Criar conta':'Recuperar senha'}</h1>
     <form id="saf" style="display:flex;flex-direction:column;gap:8px;width:min(340px,92vw)">
       ${mode==='up'?'<label class="tiny muted" style="margin:0">Nome</label><input name="n" maxlength="60" placeholder="Seu nome" autocomplete="name" required>':''}
       <label class="tiny muted" style="margin:0">E-mail</label><input name="e" type="email" maxlength="120" placeholder="voce@email.com" autocomplete="email" required>
       ${mode!=='rec'?'<label class="tiny muted" style="margin:0">Senha</label><input name="p" type="password" minlength="6" maxlength="72" placeholder="Mínimo 6 caracteres" autocomplete="'+(mode==='in'?'current-password':'new-password')+'" required>':''}
+      ${mode==='up'?'<label class="tiny muted" style="margin:0">Código de convite</label><input name="c" maxlength="20" placeholder="XXXX-XXXX" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:2px" value="'+INV.replace(/[^\w\-]/g,'')+'" required><div class="tiny muted" style="margin:-4px 0 0">O cadastro é só por convite. Peça o código ao administrador.</div>':''}
       ${mode==='up'?'<label class="tiny muted" style="margin:0">Confirmar senha</label><input name="p2" type="password" minlength="6" maxlength="72" placeholder="Repita a senha" autocomplete="new-password" required>':''}
       <button class="btn pri" type="submit" style="padding:14px;font-size:17px">${mode==='in'?'Entrar':mode==='up'?'Criar conta':'Enviar link por e-mail'}</button>
       <div id="samsg" class="tiny" style="min-height:18px;color:var(--warn,#fbbf24);text-align:center"></div></form>
@@ -1023,9 +1042,9 @@ function saLogin(sb){
         msg.textContent='';if(mode==='up'&&p!==p2){msg.style.color='var(--warn,#fbbf24)';msg.textContent='As senhas não são iguais.';return}bt.disabled=true;
         try{
           if(mode==='in'){const r=await sb.auth.signInWithPassword({email:e,password:p});if(r.error)throw r.error;d.remove();res(r.data.session)}
-          else if(mode==='up'){const r=await sb.auth.signUp({email:e,password:p,options:{data:{name:n}}});if(r.error)throw r.error;if(r.data.session){d.remove();res(r.data.session)}else{msg.style.color='var(--ok,#4ade80)';msg.textContent='Conta criada. Confirme pelo link enviado ao seu e-mail e depois entre.';mode='in'}}
+          else if(mode==='up'){const cv=String(f.get('c')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');if(!cv){throw new Error('invite_required')}const r=await sb.auth.signUp({email:e,password:p,options:{data:{name:n,invite:cv}}});if(r.error)throw r.error;if(r.data.session){d.remove();res(r.data.session)}else{msg.style.color='var(--ok,#4ade80)';msg.textContent='Conta criada. Confirme pelo link enviado ao seu e-mail e depois entre.';mode='in'}}
           else{const r=await sb.auth.resetPasswordForEmail(e,{redirectTo:location.origin+location.pathname});if(r.error)throw r.error;msg.style.color='var(--ok,#4ade80)';msg.textContent='Se o e-mail existir, enviamos um link para criar nova senha.'}
-        }catch(err){const t=String(err&&err.message||err);msg.style.color='var(--warn,#fbbf24)';msg.textContent=/Invalid login/i.test(t)?'E-mail ou senha incorretos.':/already registered|already been registered/i.test(t)?'Este e-mail já tem conta. Use "Entrar".':/rate limit/i.test(t)?'Muitas tentativas. Aguarde alguns minutos.':/Email not confirmed/i.test(t)?'Confirme seu e-mail pelo link que enviamos.':t}
+        }catch(err){const t=String(err&&err.message||err);msg.style.color='var(--warn,#fbbf24)';msg.textContent=/invite|Database error saving new user/i.test(t)?'Código de convite inválido, já usado ou vencido. Peça um novo ao administrador.':/Invalid login/i.test(t)?'E-mail ou senha incorretos.':/already registered|already been registered/i.test(t)?'Este e-mail já tem conta. Use "Entrar".':/rate limit/i.test(t)?'Muitas tentativas. Aguarde alguns minutos.':/Email not confirmed/i.test(t)?'Confirme seu e-mail pelo link que enviamos.':t}
         bt.disabled=false}};
     draw();document.body.appendChild(d);
   });
