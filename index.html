@@ -317,7 +317,7 @@ const $$=(s,e=document)=>Array.from(e.querySelectorAll(s));
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
 const dstr=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-const today=()=>dstr(new Date());
+const today=()=>{const n=new Date();if(n.getHours()<3)n.setDate(n.getDate()-1);return dstr(n)};/* dia de estudo: até 3h da manhã ainda conta como o dia anterior */
 const addDays=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return dstr(d)};
 const weekStart=(iso)=>{const d=iso?new Date(iso+'T12:00:00'):new Date();d.setDate(d.getDate()-((d.getDay()+6)%7));return dstr(d)};
 const fdate=iso=>iso?new Date(iso.length>10?iso:iso+'T12:00:00').toLocaleDateString('pt-BR'):'';
@@ -1240,7 +1240,7 @@ ACT.hojeExtra=()=>{const c=cicloDoc(),ds=c.cron?((crBuild(c)||[])[new Date(today
 
 /* ===== DESCANSO SEMANAL, REPLANEJAMENTO E TRAVA DE HORAS (v235) ===== */
 const HLOCK_H=3;
-const hrMinDate=()=>new Date().getHours()<HLOCK_H?addDays(today(),-1):today();
+const hrMinDate=()=>today();
 const hrMinLock=()=>addDays(today(),-1);
 const hrLocked=d=>!!d&&d<hrMinLock();
 function hrGuard(d){if(hrLocked(d)){toast('Lançamento travado: '+fdate(d)+' só aceita lançamentos de hoje e de ontem.');return true}return false}
