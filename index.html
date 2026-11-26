@@ -1120,14 +1120,17 @@ async function saImportCourse(sb){
     b.end();toast('Conteúdo do curso importado: '+n+' itens')}catch(e){console.error(e)}
 }
 async function saImportResumos(sb){
-  /* publica resumos novos/atualizados (resumos.json) no conteúdo do curso; só sobrescreve se a versão (rv) for maior */
+  /* publica conteúdo novo/atualizado (resumos.json: resumos, tópicos e questões) no curso; só sobrescreve se a versão (rv) for maior */
   try{const r=await fetch('resumos.json?'+Date.now());if(!r.ok)return;const rows=await r.json();if(!rows.length)return;
-    const ids=rows.map(x=>x.id);const cur=await sb.from('tpl').select('id,data').eq('coll','summaries').in('id',ids);if(cur.error)return;
-    const have={};(cur.data||[]).forEach(x=>{have[x.id]=x.data||{}});
-    const up=rows.filter(x=>((have[x.id]||{}).rv||0)<((x.data||{}).rv||1)).map(x=>({coll:x.coll,id:x.id,data:Object.assign({},have[x.id]||{},x.data)}));
+    const by={};rows.forEach(x=>{(by[x.coll]=by[x.coll]||[]).push(x)});
+    const have={};
+    for(const c of Object.keys(by)){const ids=by[c].map(x=>x.id);
+      for(let i=0;i<ids.length;i+=100){const cur=await sb.from('tpl').select('id,data').eq('coll',c).in('id',ids.slice(i,i+100));if(cur.error)return;
+        (cur.data||[]).forEach(x=>{have[c+'|'+x.id]=x.data||{}})}}
+    const up=rows.filter(x=>((have[x.coll+'|'+x.id]||{}).rv||0)<((x.data||{}).rv||1)).map(x=>({coll:x.coll,id:x.id,data:Object.assign({},have[x.coll+'|'+x.id]||{},x.data)}));
     if(!up.length)return;
-    const u=await sb.from('tpl').upsert(up,{onConflict:'coll,id'});if(u.error){console.error(u.error);return}
-    toast('Resumos atualizados: '+up.length)}catch(e){console.error(e)}
+    for(let i=0;i<up.length;i+=100){const u=await sb.from('tpl').upsert(up.slice(i,i+100),{onConflict:'coll,id'});if(u.error){console.error(u.error);return}}
+    toast('Conteúdo atualizado: '+up.length)}catch(e){console.error(e)}
 }
 async function saBoot(){
   const sb=supabase.createClient(SA_URL,SA_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});window.__sb=sb;
