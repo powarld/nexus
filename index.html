@@ -1292,7 +1292,9 @@ function restAuto(){const k=hrMinDate();if(V.autoK===k||!V.loaded.settings||!V.l
   const c=cfg();if(!c.restauto){put('settings','main',Object.assign({},strip(c),{restauto:today()}));return}
   let d=c.restauto,rest=(c.rest||[]).slice(),fail=(c.fail||[]).slice(),sh=Object.assign({},c.restsh||{}),ch=0,g=0;
   const wr=x=>rest.find(r=>weekStart(r)===weekStart(x));
-  const at=(c.atest||[]).concat(c.shd||[]);while(d<k&&g++<120){const st=S.sessions.some(x=>x.date===d&&okDay(x.minutes||0,S.questions.filter(q=>q.marked&&q.marked!=='__nao'&&q.date===d).length,d));
+  const okd=x=>S.sessions.some(s=>s.date===x&&okDay(s.minutes||0,qAns().filter(q=>q.date===x).length,x));
+  [rest,fail].forEach(L=>{for(let i=L.length-1;i>=0;i--)if(L[i]>=addDays(k,-14)&&okd(L[i])){delete sh[L[i]];L.splice(i,1);ch=1}});
+  const at=(c.atest||[]).concat(c.shd||[]);while(d<k&&g++<120){const st=S.sessions.some(x=>x.date===d&&okDay(x.minutes||0,qAns().filter(q=>q.date===d).length,d));
     if(!st&&!rest.includes(d)&&!fail.includes(d)&&!at.includes(d)){if(wr(d)){fail.push(d);schedShift(1)}else{rest.push(d);sh[d]=schedShift(1)}ch=1}
     d=addDays(d,1)}
   if(ch||d!==c.restauto)put('settings','main',Object.assign({},strip(c),{rest,fail,restsh:sh,restauto:d}))}
@@ -1632,7 +1634,7 @@ const ecoDay=(o,d)=>Math.floor(((o.dm||{})[d]||0)/10)+Math.floor(((o.dq||{})[d]|
 function ecoBal(o){const e=ecoE(),t=today();let n=0;Object.keys(e.bk).forEach(k=>n+=e.bk[k]);Object.keys(e.cl).forEach(k=>n+=e.cl[k]);if(t>=ECO_START)n+=ecoDay(o,t);const y=addDays(t,-1);if(y>=ECO_START&&e.bk[y]==null)n+=ecoDay(o,y);return Math.max(0,n-(e.sp||0))}
 function ecoSync(o){try{if(V.rk.ecoBusy||!V.loaded.settings||!V.loaded.sessions||!V.loaded.questions)return;const e=ecoE(),lim=addDays(today(),-2),miss=[];for(let d=ECO_START,g=0;d<=lim&&g<120;d=addDays(d,1),g++)if(e.bk[d]==null)miss.push(d);if(miss.length)ecoSave(x=>{miss.forEach(d=>{x.bk[d]=ecoDay(o,d)})})}catch(x){console.error(x)}}
 function ecoMis(o,d){const m=Math.round((o.dm||{})[d]||0),q=(o.dq||{})[d]||0,h=[...d].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0,7);
-  const as=S.questions.filter(x=>x.marked&&x.marked!=='__nao'&&x.date===d),ao=as.filter(isOk).length,dc=cfg().dch||{},nch=Object.values(dc.c||{}).concat(Object.values(dc.a||{})).filter(x=>x.ts&&x.n!=null&&new Date(x.ts).toLocaleDateString('sv')===d).length;
+  const as=qAns().filter(x=>x.date===d),ao=as.filter(isOk).length,dc=cfg().dch||{},nch=Object.values(dc.c||{}).concat(Object.values(dc.a||{})).filter(x=>x.ts&&x.n!=null&&new Date(x.ts).toLocaleDateString('sv')===d).length;
   const T=[['m30','Estudar 30 minutos',3,m,30,' min'],['m60','Estudar 60 minutos',6,m,60,' min'],['m90','Estudar 90 minutos',9,m,90,' min']][h%3],
     Q=[['q10','Resolver 10 questões',3,q,10,''],['q20','Resolver 20 questões',5,q,20,''],['q40','Resolver 40 questões',9,q,40,''],['ac','Acertar 80% em 10 ou mais questões',7,as.length>=10&&ao/as.length>=.8?1:0,1,'x'],['ch','Terminar 1 desafio 1×1',6,nch,1,'']][(h>>>3)%5];
   return [['meta','Cumprir a meta do dia',8,okDay(m,q,d)?1:0,1,'m'],T,Q].map(([id,t,c,v,g,u])=>({id,t,c,ok:v>=g,p:u==='m'?m+'/60 min · '+q+'/20 questões':u==='x'?(v>=g?'Feito':'Pendente'):Math.min(v,g)+' / '+g+u,pc:Math.min(100,Math.round(v/g*100))}))}
